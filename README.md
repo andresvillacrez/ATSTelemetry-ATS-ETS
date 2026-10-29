@@ -1,5 +1,9 @@
 # ATS / ETS2 Native Telemetry App (FH6 v2.3)
 
+<p align="center">
+  <img src="screenshots/Captura de pantalla 2026-10-28 225007.png" alt="ATS / ETS2 Native Telemetry App Preview" width="100%">
+</p>
+
 Aplicación de escritorio independiente para **Windows (x64)** que lee y muestra la telemetría en tiempo real de **American Truck Simulator (ATS)** y **Euro Truck Simulator 2 (ETS2)** con una interfaz gráfica avanzada basada en el panel **FH6 v2.3** a 60 FPS mediante **SkiaSharp**.
 
 ---
