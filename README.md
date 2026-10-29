@@ -92,6 +92,18 @@ Windows Native Final/
 
 ---
 
+## Evolución y Capturas de Pantalla (Historial de Versiones)
+
+Las capturas de pantalla guardadas en el repositorio documentan la evolución visual y técnica de la aplicación, cotejadas por su fecha y hora de creación:
+
+1. **`Captura de pantalla 2026-10-26 190340.png`** *(26 Oct 2026 - 19:03)* -> **v2.0-alpha**: Estructura base inicial del lienzo SkiaSharp y pruebas de velocímetro.
+2. **`Captura de pantalla 2026-10-26 204041.png`** *(26 Oct 2026 - 20:40)* -> **v2.0**: Incorporación de clúster de RPM, marcha y primeros testigos.
+3. **`Captura de pantalla 2026-10-26 225454.png`** *(26 Oct 2026 - 22:54)* -> **v2.1**: Implementación de la cabecera de empresa y logotipos de marca.
+4. **`Captura de pantalla 2026-10-27 234636.png`** *(27 Oct 2026 - 23:46)* -> **v2.2**: Adición de paneles de GPS, daños, clima y franja inferior de estado.
+5. **`Captura de pantalla 2026-10-28 225007.png`** *(28 Oct 2026 - 22:50)* -> **v2.3 (Versión Actual / Estable)**: Versión final con soporte de logos reales de empresa (`logo_N.png`), optimización a 60 FPS y lectura pasiva MMF.
+
+---
+
 ## Licencia y Créditos
 - Desarrollado por **HS-Gaming**.
 - Telemetría basada en `scs-telemetry.dll` de RenCloud.
