@@ -1,0 +1,81 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>ATSTelemetry</AssemblyName>
+    <RootNamespace>ATSTelemetry</RootNamespace>
+    <ApplicationIcon>..\Assets\ATSTelemetry.ico</ApplicationIcon>
+    <AssemblyTitle>ATS Telemetry</AssemblyTitle>
+    <Product>ATS Telemetry</Product>
+    <Description>Panel de telemetría para American Truck Simulator y Euro Truck Simulator 2</Description>
+    <Company>ATS Telemetry</Company>
+    <Copyright>© 2026 ATS Telemetry</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>AnyCPU;x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.Views.WindowsForms" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.9" />
+  </ItemGroup>
+  <Target Name="CopyTelemetryPlugin" AfterTargets="Publish">
+    <MakeDir Directories="$(PublishDir)Assets\Plugins" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\Assets\Plugins\scs-telemetry.dll"
+          DestinationFiles="$(PublishDir)Assets\Plugins\scs-telemetry.dll" />
+  </Target>
+  <Target Name="CopyAppIcon" AfterTargets="Publish">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\Assets\ATSTelemetry.ico"
+          DestinationFiles="$(PublishDir)ATSTelemetry.ico" />
+  </Target>
+
+  <ItemGroup>
+    <Content Include="..\Assets\Indicators\*.png"
+             Link="Assets\Indicators\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Assets\BrandLogos\*.png"
+             Link="Assets\BrandLogos\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Assets\CompanyLogos\*.png"
+             Link="Assets\CompanyLogos\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Assets\Plugins\*.dll"
+             Link="Assets\Plugins\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Assets\ATSTelemetry.ico"
+             Link="ATSTelemetry.ico"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\install-plugin.ps1"
+             Link="install-plugin.ps1"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\install-plugin.bat"
+             Link="install-plugin.bat"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
+

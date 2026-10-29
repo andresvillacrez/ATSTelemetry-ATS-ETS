@@ -1,0 +1,42 @@
+ATS TELEMETRY - WINDOWS NATIVE FINAL
+=====================================
+
+Carpeta de trabajo lista para usar y modificar.
+
+PROBAR AHORA
+------------
+  run.bat          Abre el panel con telemetria real (ATS/ETS2 abierto)
+  run-demo.bat     Abre el panel con datos de prueba, sin juego
+
+COMPILAR DESPUES DE CAMBIAR LA INTERFAZ
+---------------------------------------
+  build.bat
+
+El ejecutable final queda en:
+  dist\ATS-Telemetry-Windows\ATSTelemetry.exe
+
+MODIFICAR LA INTERFAZ
+---------------------
+  src\DashboardRenderer.cs     Todo el dibujo del panel
+  src\SkiaCompat.cs            Capa de dibujo sobre SkiaSharp
+  src\MainForm.cs              Pantalla completa, modo ventana y bandeja
+  Assets\Indicators\           Iconos de testigos (PNG)
+  Assets\ATSTelemetry.ico      Icono del ejecutable
+
+Guia detallada:
+  GUIA-INTERFAZ.md
+
+CERRAR EL PANEL
+---------------
+  Ctrl + Shift + Q
+  o clic derecho en el icono de la bandeja -> Salir
+
+NOTAS
+-----
+- El panel se dibuja en un lienzo virtual de 1920 x 1080 y se escala al monitor.
+- No hay monitor obligatorio: aparece donde esté el cursor y recuerda la última
+  pantalla y el último modo.
+- Para moverlo: bandeja → Pantalla. Para ventana movible: F11 o bandeja →
+  Modo ventana.
+- Para elegir otra pantalla al iniciar: ATSTelemetry.exe --screen=DISPLAY2
+- La subcarpeta _anterior contiene scripts viejos del intento anterior.
