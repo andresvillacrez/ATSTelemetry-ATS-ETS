@@ -59,6 +59,14 @@
              Link="Assets\CompanyLogos\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Assets\TruckImages\*.jpg"
+             Link="Assets\TruckImages\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Assets\TruckImages\*.txt"
+             Link="Assets\TruckImages\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\Assets\Plugins\*.dll"
              Link="Assets\Plugins\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"

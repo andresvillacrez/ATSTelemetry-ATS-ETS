@@ -380,8 +380,8 @@ public sealed class TelemetryReader : IDisposable
 
             Rpm = (float)Math.Clamp(1450 + (Math.Sin(t * 0.9) * 0.5 + Math.Sin(t * 2.1) * 0.08) * 520, 550, 2050),
             TruckBrand = "Kenworth",
-            TruckId = "vehicle.kenworth.t800_gtm",
-            TruckName = "T800",
+            TruckId = "vehicle.kenworth.w900",
+            TruckName = "W900",
             CargoId = "bulldozer",
             CargoName = "Buldócer",
             CargoMass = 18_189.1f,

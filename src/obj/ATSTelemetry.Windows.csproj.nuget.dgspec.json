@@ -46,7 +46,7 @@
             "Microsoft.NET.ILLink.Tasks": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[8.0.32, )",
+              "version": "[8.0.33, )",
               "autoReferenced": true
             },
             "SkiaSharp": {
@@ -76,15 +76,15 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[8.0.32, 8.0.32]"
+              "version": "[8.0.33, 8.0.33]"
             },
             {
               "name": "Microsoft.NETCore.App.Runtime.win-x64",
-              "version": "[8.0.32, 8.0.32]"
+              "version": "[8.0.33, 8.0.33]"
             },
             {
               "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-              "version": "[8.0.32, 8.0.32]"
+              "version": "[8.0.33, 8.0.33]"
             }
           ],
           "frameworkReferences": {
@@ -95,7 +95,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.426/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Users\\hs-se\\AppData\\Local\\Temp\\opencode\\dotnet8\\sdk\\8.0.427/PortableRuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {

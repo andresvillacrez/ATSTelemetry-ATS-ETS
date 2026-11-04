@@ -1,7 +1,7 @@
 # Guía rápida para modificar la interfaz FH6
 
 Esta carpeta es la **app final** de **ATS Telemetry para Windows**. La interfaz
-actual es el rediseño **FH6 v2.3**, inspirado en el panel digital del Volvo FH6.
+actual es el rediseño **FH6 v2.7**, inspirado en el panel digital del Volvo FH6.
 La bitácora de decisiones y capturas está en
 [README-FH6.md](README-FH6.md).
 
@@ -22,6 +22,7 @@ Windows Native Final\
   Assets\Indicators\         Iconos de testigos (PNG)
   Assets\BrandLogos\         Logotipos de marca de los camiones
   Assets\CompanyLogos\       Logos reales del perfil (logo_0..logo_7)
+  Assets\TruckImages\        45 imagenes oficiales por modelo (JPG)
   Assets\Plugins\            scs-telemetry.dll incluido
   build.ps1 / build.bat      Compila y publica la carpeta portátil
   run.bat                    Abre la app final con telemetría real
@@ -78,6 +79,9 @@ quedan el estado de la app (con punto de color) y el nombre del monitor.
 - El check engine ocupa una celda especial de **88 px** con el icono a la
   izquierda y `CHECK` / `ENGINE` en dos filas a la derecha. Se activa con
   `snap.Active && snap.Engine && EngineDmg >= 5`.
+- **La celda del CHECK solo se dibuja con el motor encendido.** Sin motor
+  desaparece con el resto de la tira. Encendido y sin avería usa icono y texto en
+  blanco con un borde tenue; al activarse recupera el amarillo y el brillo.
 - Los iconos inactivos se atenúan; baliza, freno de estacionamiento,
   limpiabrisas y diferencial pueden pulsar.
 
@@ -89,8 +93,10 @@ quedan el estado de la app (con punto de color) y el nombre del monitor.
   El número central usa **Bahnschrift Light 184 px**; por encima del límite se
   pinta en naranja.
 - Chip de crucero de **95 × 48** en `top = 310`, con icono, `CRUCERO` y la
-  velocidad fijada en verde. El relleno usa verde al **10 %** y el encuadre al
-  **42 %** para que el chip se despegue del fondo sin romper la estética.
+  velocidad fijada. **Se dibuja siempre**: inactivo usa relleno blanco al 4,5 %,
+  borde al 22 % e icono/texto atenuados con `-- km/h`; activo recupera el relleno
+  verde al **10 %**, el encuadre al **42 %**, el icono en verde y la velocidad
+  fijada. `DrawFh6CruiseChip` recibe un `double?` para distinguir ambos estados.
 - Testigos de **batería** y **presión de aceite** de **32 × 32** a los lados del
   chip, centrados en `y = 334`: batería en `cx - 97.5` y aceite en `cx + 65.5`.
   Apagados usan gris casi negro (`#242424`); encendidos, rojo `#FF2938` con
@@ -108,12 +114,14 @@ quedan el estado de la app (con punto de color) y el nombre del monitor.
 energizado. `UpdateIgnitionElapsed` detecta el cambio de estado y marca el
 instante de arranque:
 
-- **Motor apagado:** la fila de testigos queda vacía, desaparecen el número de
-  RPM, la barra de RPM y la marca de redline, se apagan los testigos de
-  batería/aceite y los paneles de agua, aire y combustible quedan solo con su
-  marco. Empresa, carga, daños, GPS, clima, cabecera y pie siguen visibles. El
-  panel de avisos permanece visible (con `SIN AVISOS` si no hay mensajes) y el
-  chip de crucero desaparece.
+- **Motor apagado:** todos los testigos quedan apagados, incluido el **CHECK**,
+  que no se dibuja. Desaparecen el número de RPM, la barra de RPM y la marca de
+  redline; se apagan los testigos de batería/aceite y los paneles de agua y aire
+  quedan solo con su marco. El **chip de crucero permanece visible en gris con
+  `-- km/h`** y la **tarjeta de combustible sigue encendida** con nivel, galones,
+  autonomía y barra. Empresa, carga, daños, GPS, clima, cabecera y pie siguen
+  visibles. El panel de avisos permanece visible (con `SIN AVISOS` si no hay
+  mensajes).
 - **Arranque:** durante **1,25 s** se encienden todos los testigos a la vez
   (chequeo de bombillas), incluidos batería y aceite. El velocímetro barre de
   `0` a **160 km/h**, y el tacómetro y la barra de RPM de `0` a `RpmMax`, en
@@ -138,8 +146,19 @@ instante de arranque:
 - **Carga** (`DrawFh6CargoPanel`): nombre, tipo, peso, integridad, trabajo
   estándar/especial, remolque, ruta, distancia y entrega. No hay miniatura: el
   nombre y el tipo usan todo el ancho (`contentW`) del panel.
-- **Daños** (`DrawFh6DamagePanel`): camión, tráiler, carga y motor, más
-  `SISTEMA MÁS AFECTADO` y `PROMEDIO GENERAL`.
+- **Daños** (`DrawFh6DamagePanel`): solo **CAMIÓN**, **TRÁILER** y **CARGA**,
+  con la etiqueta a la izquierda, la barra en el centro y el porcentaje a la
+  derecha. La mitad inferior (`y + 190`, `352 × 178`) muestra la imagen del
+  camión actual desde `Assets\TruckImages\<modelo>.jpg` mediante
+  `DrawFh6TruckImage`, centrada, escalada de forma proporcional y con 8 px de
+  margen interior. Al cambiar de modelo, la imagen anterior y la nueva se funden
+  en **0,5 s**; la primera carga y el fallback aparecen de inmediato. Si el
+  modelo no tiene imagen se muestra un texto discreto; sin señal no se dibuja
+  nada.
+  - **Cobertura v2.5:** 45 modelos oficiales, **19 de ATS** y **26 de ETS2**.
+  - Formato: JPG de 1200 × 600, calidad 90, un archivo por modelo.
+  - La lista completa, las fuentes y las reglas de nombres están en
+    `Assets\TruckImages\README.txt`.
 - **GPS** (`DrawFh6GpsPanel`): la señal de límite de **88 px** va al borde
   derecho, a 16 px del marco. La brújula de **104 px** queda a la izquierda. La
   columna central, de 156 px, centra `RUMBO`, `DESTINO` y `ORIGEN`. Debajo
@@ -175,7 +194,8 @@ vacía y todo se atenúa.
   icono de 22 px, `COMBUSTIBLE` y `NIVEL` / `RESERVA` / `SIN SEÑAL`. En el
   cuerpo, icono de **32 px**, porcentaje a **34 px**, divisor en `x + 150` y
   columna con `84/159 GAL` y `AUT. 738 KM`. La barra va en `y + 108` y el pie es
-  `COMBUSTIBLE · DATOS DEL JUEGO`.
+  `COMBUSTIBLE · DATOS DEL JUEGO`. **La tarjeta sigue encendida con el motor
+  apagado**; en ese caso muestra el nivel real sin la animación de barrido.
 - **Avisos** (`DrawFh6ReservedPanel` en `742, 794`, `438 × 142`): cabecera con
   icono de 22 px en naranja, `AVISOS` y estado `EN VIVO` / `DEMO` / `SIN SEÑAL`.
   El mensaje se centra en naranja (`#FF851A`) a 24 px (mínimo 13 px) y lleva el
@@ -211,6 +231,8 @@ Los métodos activos del rediseño son:
   `DrawFh6WeatherCard`, `DrawFh6Footer`.
 - Secuencia de encendido: `UpdateIgnitionElapsed`, `AnimatedFraction` y
   `SmoothStep`.
+- Fundido de la imagen del camión: `TruckImage(snap, out key)`,
+  `DrawFh6TruckImage`, `DrawTruckImageAlpha` y `ResetTruckImageFade`.
 - Avisos del juego: `UpdateGameMessages`, `PushMessage`, `StoreMessageBaseline`,
   `DetectGameMessages`, `ChangedPositive` e `Increased`.
 - Identidad: `DrawFh6CompanyLogo` y `CompanyLogoImage`.
@@ -276,7 +298,13 @@ Otros iconos del panel: `cruise-control-c` para el crucero y
 en `Assets\BrandLogos` (`kenworth.png`, `peterbilt.png`, `volvo.png`, etc.).
 Los logos de empresa están en `Assets\CompanyLogos\logo_0.png`..`logo_7.png` y
 se cargan con `CompanyLogoImage` según el campo `logo` del perfil; no se dibujan
-con iniciales.
+con iniciales. Las imágenes de camión están en `Assets\TruckImages` (45 JPG de
+1200 × 600, uno por modelo oficial) y se cargan
+con `TruckImage`/`LoadTruckImage`: primero se prueba el `TruckId` normalizado
+(`vehicle.kenworth.w900` → `kenworth_w900`), luego las variantes sin sufijos de
+mod (`_gtm`, `_mod`, `_custom`) y, por último, `TruckBrand` + `TruckName`. El
+método devuelve también la clave resuelta para que `DrawFh6TruckImage` detecte
+el cambio de modelo y aplique el fundido de 0,5 s.
 
 Los iconos de clima, batería, aceite, termómetro y manómetro se dibujan por
 vectores; no son PNG.
@@ -381,8 +409,9 @@ La API de telemetría no entrega el logo de la empresa. `profile.sii` sí incluy
 el campo `logo` (por ejemplo, `logo_4`); `BankBalanceReader` lo lee y
 `DashboardRenderer.CompanyLogoImage` carga el PNG real correspondiente de
 `Assets\CompanyLogos`. Esos PNG se extrajeron de `base.scs`
-(`material/ui/player_logo`), no se dibujan con iniciales. La carga ya no usa
-ninguna imagen ni miniatura: solo se muestran los textos del juego.
+(`material/ui/player_logo`), no se dibujan con iniciales. El panel de carga no
+usa ninguna imagen ni miniatura: solo muestra los textos del juego. La única
+imagen de vehículo es la del camión en el panel de daños.
 
 ## Compilación manual
 

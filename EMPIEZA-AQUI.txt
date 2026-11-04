@@ -2,6 +2,8 @@ ATS TELEMETRY - WINDOWS NATIVE FINAL
 =====================================
 
 Carpeta de trabajo lista para usar y modificar.
+Version de trabajo: v2.7 (45 imagenes de camion oficiales; CHECK normal y chip
+de crucero siempre visible; fundido de 0,5 s al cambiar de camion).
 
 PROBAR AHORA
 ------------
@@ -21,6 +23,7 @@ MODIFICAR LA INTERFAZ
   src\SkiaCompat.cs            Capa de dibujo sobre SkiaSharp
   src\MainForm.cs              Pantalla completa, modo ventana y bandeja
   Assets\Indicators\           Iconos de testigos (PNG)
+  Assets\TruckImages\          45 imagenes oficiales por modelo (JPG)
   Assets\ATSTelemetry.ico      Icono del ejecutable
 
 Guia detallada:
@@ -39,4 +42,10 @@ NOTAS
 - Para moverlo: bandeja → Pantalla. Para ventana movible: F11 o bandeja →
   Modo ventana.
 - Para elegir otra pantalla al iniciar: ATSTelemetry.exe --screen=DISPLAY2
+- La v2.7 incluye 19 modelos de ATS y 26 de ETS2; la lista y las fuentes estan
+  en Assets\TruckImages\README.txt.
+- El CHECK solo se ve con el motor encendido: en blanco sin averia y en amarillo
+  cuando el juego lo marca. El chip de crucero queda siempre visible (en gris con
+  "-- km/h" si esta inactivo) y la tarjeta de combustible se ve tambien con el
+  motor apagado. La imagen del camion se funde en 0,5 s al cambiar de modelo.
 - La subcarpeta _anterior contiene scripts viejos del intento anterior.

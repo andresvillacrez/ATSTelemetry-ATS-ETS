@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCopyrightAttribute("© 2026 ATS Telemetry")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Panel de telemetría para American Truck Simulator y Euro Truck Simulator 2")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0b787a25e4594d64f4d24dc977af32d7db90929e")]
 [assembly: System.Reflection.AssemblyProductAttribute("ATS Telemetry")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ATS Telemetry")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -9,6 +9,16 @@ namespace ATSTelemetry;
 public sealed class MainForm : Form
 {
     private const int WmFrame = 0x8000 + 1;
+    private const int WmHotKey = 0x0312;
+    private const int HotKeyToggleClickThrough = 1;
+    private const int HotKeyToggleOverlay = 2;
+    private const int HotKeyOpenSettings = 3;
+    private const int HotKeyCycleLayout = 4;
+    private const uint ModControl = 0x0002;
+    private const uint ModShift = 0x0004;
+    private const int GwlExStyle = -20;
+    private const int WsExTransparent = 0x20;
+    private const int WsExLayered = 0x80000;
 
     private readonly TelemetryReader _reader;
     private DashboardControl _dashboard;
@@ -19,12 +29,19 @@ public sealed class MainForm : Form
     private readonly bool _startWindowed;
     private ToolStripMenuItem? _screenMenu;
     private ToolStripMenuItem? _windowedItem;
-    private ToolStripMenuItem? _weatherAutoItem;
-    private readonly List<ToolStripMenuItem> _weatherItems = new();
+    private ToolStripMenuItem? _overlayItem;
+    private ToolStripMenuItem? _clickThroughItem;
+    private ToolStripMenuItem? _alwaysOnTopItem;
+    private ToolStripMenuItem? _layoutMenu;
     private bool _windowed;
     private bool _switchingMode;
+    private bool _overlay;
+    private bool _clickThrough;
+    private bool _settingsOpen;
+    private readonly System.Windows.Forms.Timer _clickThroughGuard;
     private string _displayName = string.Empty;
     private Icon? _appIcon;
+    private IntPtr _hotKeyHandle;
     private int _frameQueued;
 
     public MainForm(string[] args)
@@ -34,6 +51,7 @@ public sealed class MainForm : Form
             ?.Substring("--screen=".Length);
 
         _preferences = WindowPreferences.Load();
+        Theme.Apply(_preferences.Theme, _preferences.UiScale);
 
         var hasExplicitScreen = !string.IsNullOrWhiteSpace(_screenTarget);
         var forcedWindowed = args.Any(arg =>
@@ -42,25 +60,47 @@ public sealed class MainForm : Form
         _startWindowed = forcedWindowed || (!hasExplicitScreen && _preferences.Windowed);
 
         _reader = new TelemetryReader(demo);
-        _reader.Weather = _preferences.Weather;
-        _reader.WeatherAuto = _preferences.WeatherAuto;
+        _reader.WeatherAuto = true;
         _dashboard = new DashboardControl(_reader) { Dock = DockStyle.Fill };
+        _dashboard.SettingsRequested += (_, _) => ShowSettings();
+        _dashboard.CreditsRequested += (_, _) => ShowCredits();
+        ApplyRendererPreferences();
 
         Text = "ATS Telemetry";
         _appIcon = LoadAppIcon();
         Icon = _appIcon;
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
-        BackColor = Color.Black;
+        BackColor = Theme.BackgroundTop;
         ShowInTaskbar = false;
         TopMost = true;
         KeyPreview = true;
         AutoScaleMode = AutoScaleMode.None;
         DoubleBuffered = true;
 
+        // Red de seguridad: si el clic a través queda activo por olvido, se
+        // desactiva solo a los 30 minutos y avisa en la bandeja.
+        _clickThroughGuard = new System.Windows.Forms.Timer { Interval = 30 * 60 * 1000 };
+        _clickThroughGuard.Tick += (_, _) =>
+        {
+            _clickThroughGuard.Stop();
+            ApplyClickThrough(false);
+            _tray?.ShowBalloonTip(
+                5000,
+                "Clic a través desactivado",
+                "Se restauró el control de la ventana por seguridad.",
+                ToolTipIcon.Info);
+        };
+
         Controls.Add(_dashboard);
 
         ApplyStartupLayout();
+
+        if (_preferences.Overlay)
+        {
+            // El clic a través nunca se restaura al arrancar.
+            EnableOverlay(restoreClickThrough: false);
+        }
 
         _frameClock = new FrameClock(60, RequestFrame);
         _frameClock.Start();
@@ -69,6 +109,22 @@ public sealed class MainForm : Form
 
         KeyDown += (_, e) =>
         {
+            if (e.KeyCode == Keys.Escape && _overlay)
+            {
+                if (_clickThrough)
+                {
+                    ApplyClickThrough(false);
+                }
+                else
+                {
+                    DisableOverlay();
+                }
+
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
             if (e.KeyCode == Keys.F11 && !e.Control && !e.Alt && !e.Shift)
             {
                 ToggleWindowed();
@@ -85,25 +141,46 @@ public sealed class MainForm : Form
 
         Move += (_, _) =>
         {
-            if (!_windowed || WindowState != FormWindowState.Normal)
+            if (!_windowed || _overlay || WindowState != FormWindowState.Normal)
             {
                 return;
             }
 
+            UpdateSavedBounds();
             var screen = CurrentScreen();
             _preferences.ScreenDevice = screen.DeviceName;
             UpdateScreenLabel(screen);
         };
+
+        Resize += (_, _) => UpdateSavedBounds();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         SavePreferences();
+        UnregisterGlobalHotKeys();
+        _clickThroughGuard.Stop();
+        _clickThroughGuard.Dispose();
         _frameClock.Dispose();
         _tray.Visible = false;
         _tray.Dispose();
         _reader.Dispose();
         base.OnFormClosing(e);
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        WindowChrome.ApplyTitleBar(Handle, !Theme.IsLight);
+        _hotKeyHandle = Handle;
+        RegisterGlobalHotKeys();
+    }
+
+    protected override void OnHandleDestroyed(EventArgs e)
+    {
+        UnregisterGlobalHotKeys();
+        _hotKeyHandle = IntPtr.Zero;
+        base.OnHandleDestroyed(e);
     }
 
     protected override void Dispose(bool disposing)
@@ -119,6 +196,35 @@ public sealed class MainForm : Form
 
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == WmHotKey)
+        {
+            if (_settingsOpen)
+            {
+                return;
+            }
+
+            switch (m.WParam.ToInt32())
+            {
+                case HotKeyToggleClickThrough:
+                    if (_overlay)
+                    {
+                        ApplyClickThrough(!_clickThrough);
+                    }
+                    return;
+                case HotKeyToggleOverlay:
+                    ToggleOverlay();
+                    return;
+                case HotKeyOpenSettings:
+                    // Abrir el diálogo fuera del WndProc evita bloquear el bucle
+                    // de mensajes mientras el atajo llega desde el juego.
+                    BeginInvoke(ShowSettings);
+                    return;
+                case HotKeyCycleLayout:
+                    CycleLayout();
+                    return;
+            }
+        }
+
         if (m.Msg == WmFrame)
         {
             Interlocked.Exchange(ref _frameQueued, 0);
@@ -201,26 +307,24 @@ public sealed class MainForm : Form
             BeginLayoutChange();
         }
 
+        if (!windowed && _windowed)
+        {
+            UpdateSavedBounds();
+        }
+
         _windowed = windowed;
         WindowState = FormWindowState.Normal;
         FormBorderStyle = targetBorder;
         ShowInTaskbar = windowed;
         MaximizeBox = windowed;
         MinimizeBox = windowed;
-        TopMost = true;
+        TopMost = _preferences.AlwaysOnTop || _overlay;
 
         if (windowed)
         {
-            var area = screen.WorkingArea;
-            var width = Math.Min(1280, Math.Max(480, (int)(area.Width * 0.9)));
-            var height = Math.Min(720, Math.Max(320, (int)(area.Height * 0.9)));
-
-            MinimumSize = new Size(Math.Min(640, width), Math.Min(360, height));
-            Bounds = new Rectangle(
-                area.Left + (area.Width - width) / 2,
-                area.Top + (area.Height - height) / 2,
-                width,
-                height);
+            var bounds = RestoreWindowBounds(screen) ?? DefaultWindowBounds(screen);
+            MinimumSize = new Size(Math.Min(640, bounds.Width), Math.Min(360, bounds.Height));
+            Bounds = bounds;
         }
         else
         {
@@ -244,6 +348,74 @@ public sealed class MainForm : Form
         }
     }
 
+    private static Rectangle DefaultWindowBounds(Screen screen)
+    {
+        var area = screen.WorkingArea;
+        var width = Math.Min(1280, Math.Max(480, (int)(area.Width * 0.9)));
+        var height = Math.Min(720, Math.Max(320, (int)(area.Height * 0.9)));
+
+        return new Rectangle(
+            area.Left + (area.Width - width) / 2,
+            area.Top + (area.Height - height) / 2,
+            width,
+            height);
+    }
+
+    private Rectangle? RestoreWindowBounds(Screen screen)
+    {
+        if (_preferences.WindowX is not { } x
+            || _preferences.WindowY is not { } y
+            || _preferences.WindowWidth is not { } width
+            || _preferences.WindowHeight is not { } height)
+        {
+            return null;
+        }
+
+        if (width < 480 || height < 320)
+        {
+            return null;
+        }
+
+        var area = screen.WorkingArea;
+        var intersection = Rectangle.Intersect(new Rectangle(x, y, width, height), area);
+        if (intersection.Width < 160 || intersection.Height < 120)
+        {
+            return null;
+        }
+
+        width = Math.Min(width, area.Width);
+        height = Math.Min(height, area.Height);
+
+        var minX = area.Left - width + 160;
+        var maxX = area.Right - 160;
+        x = maxX >= minX ? Math.Clamp(x, minX, maxX) : area.Left;
+
+        var minY = area.Top;
+        var maxY = area.Bottom - 120;
+        y = maxY >= minY ? Math.Clamp(y, minY, maxY) : area.Top;
+
+        return new Rectangle(x, y, width, height);
+    }
+
+    private void UpdateSavedBounds()
+    {
+        if (!_windowed || _overlay || WindowState != FormWindowState.Normal)
+        {
+            return;
+        }
+
+        var bounds = Bounds;
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return;
+        }
+
+        _preferences.WindowX = bounds.X;
+        _preferences.WindowY = bounds.Y;
+        _preferences.WindowWidth = bounds.Width;
+        _preferences.WindowHeight = bounds.Height;
+    }
+
     private void BeginLayoutChange()
     {
         _switchingMode = true;
@@ -257,7 +429,10 @@ public sealed class MainForm : Form
         _dashboard = new DashboardControl(_reader)
         {
             Dock = DockStyle.Fill,
-            DisplayName = _displayName
+            DisplayName = _displayName,
+            ShowDetails = _preferences.ShowDetails,
+            ReduceMotion = _preferences.ReduceMotion,
+            LayoutMode = _preferences.Layout
         };
         Controls.Add(_dashboard);
         _dashboard.BringToFront();
@@ -270,6 +445,12 @@ public sealed class MainForm : Form
 
     private void ToggleWindowed()
     {
+        if (_overlay)
+        {
+            DisableOverlay();
+            return;
+        }
+
         var screen = CurrentScreen();
 
         if (_windowed)
@@ -286,6 +467,12 @@ public sealed class MainForm : Form
 
     private void MoveToScreen(Screen screen)
     {
+        if (_overlay)
+        {
+            Bounds = screen.Bounds;
+            return;
+        }
+
         if (_windowed)
         {
             ApplyWindowed(screen);
@@ -334,14 +521,350 @@ public sealed class MainForm : Form
     {
         var screen = CurrentScreen();
         _preferences.ScreenDevice = screen.DeviceName;
-        _preferences.Windowed = _windowed;
+        if (!_overlay)
+        {
+            _preferences.Windowed = _windowed;
+            UpdateSavedBounds();
+        }
         _preferences.Save();
+    }
+
+    private void ApplyRendererPreferences()
+    {
+        if (_dashboard.IsDisposed)
+        {
+            return;
+        }
+
+        _dashboard.ShowDetails = _preferences.ShowDetails;
+        _dashboard.ReduceMotion = _preferences.ReduceMotion;
+        _dashboard.ShowDiagnostics = _preferences.ShowDiagnostics;
+        _dashboard.Units = _preferences.Units;
+        _dashboard.LayoutMode = _preferences.Layout;
+    }
+
+    private void RegisterGlobalHotKeys()
+    {
+        if (_hotKeyHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var clickThrough = RegisterHotKey(
+            _hotKeyHandle, HotKeyToggleClickThrough, ModControl | ModShift, (uint)Keys.O);
+        var overlay = RegisterHotKey(
+            _hotKeyHandle, HotKeyToggleOverlay, ModControl | ModShift, (uint)Keys.F);
+        var settings = RegisterHotKey(
+            _hotKeyHandle, HotKeyOpenSettings, ModControl | ModShift, (uint)Keys.A);
+        var layout = RegisterHotKey(
+            _hotKeyHandle, HotKeyCycleLayout, ModControl | ModShift, (uint)Keys.L);
+
+        if (!(clickThrough && overlay && settings && layout) && _tray is not null)
+        {
+            _tray.ShowBalloonTip(
+                4000,
+                "Atajos globales",
+                "Algunos atajos no se pudieron registrar. El menú de la bandeja sigue disponible.",
+                ToolTipIcon.Warning);
+        }
+    }
+
+    private void UnregisterGlobalHotKeys()
+    {
+        if (_hotKeyHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        UnregisterHotKey(_hotKeyHandle, HotKeyToggleClickThrough);
+        UnregisterHotKey(_hotKeyHandle, HotKeyToggleOverlay);
+        UnregisterHotKey(_hotKeyHandle, HotKeyOpenSettings);
+        UnregisterHotKey(_hotKeyHandle, HotKeyCycleLayout);
+    }
+
+    private void CycleLayout()
+    {
+        var next = _preferences.Layout switch
+        {
+            LayoutMode.Auto => LayoutMode.Full,
+            LayoutMode.Full => LayoutMode.Compact,
+            LayoutMode.Compact => LayoutMode.Minimal,
+            _ => LayoutMode.Auto
+        };
+
+        SetLayout(next);
+
+        if (_tray is not null)
+        {
+            _tray.ShowBalloonTip(2500, "Diseño", LayoutLabel(next), ToolTipIcon.Info);
+        }
+    }
+
+    private void SetLayout(LayoutMode mode)
+    {
+        _preferences.Layout = mode;
+        ApplyRendererPreferences();
+        SavePreferences();
+        UpdateLayoutMenu();
+    }
+
+    private void UpdateLayoutMenu()
+    {
+        if (_layoutMenu == null)
+        {
+            return;
+        }
+
+        foreach (ToolStripItem item in _layoutMenu.DropDownItems)
+        {
+            if (item is ToolStripMenuItem menuItem && menuItem.Tag is LayoutMode mode)
+            {
+                menuItem.Checked = mode == _preferences.Layout;
+            }
+        }
+    }
+
+    private static string LayoutLabel(LayoutMode mode) => mode switch
+    {
+        LayoutMode.Full => "Completo · 1920 × 1080",
+        LayoutMode.Compact => "Compacto · 1280 × 720",
+        LayoutMode.Minimal => "Mínimo · 960 × 540",
+        _ => "Automático según la ventana"
+    };
+
+    private void ShowSettings()
+    {
+        if (_settingsOpen)
+        {
+            return;
+        }
+
+        _settingsOpen = true;
+
+        try
+        {
+            using var form = new SettingsForm(_preferences, _reader.Snapshot());
+            // El panel principal es TopMost; se baja temporalmente para que el
+            // diálogo pueda quedar delante y recibir foco.
+            var restoreTopMost = TopMost;
+            TopMost = false;
+            form.TopMost = true;
+            form.Shown += (_, _) =>
+            {
+                form.Activate();
+                form.BringToFront();
+            };
+
+            var result = form.ShowDialog(this);
+            TopMost = restoreTopMost;
+
+            if (result != DialogResult.OK)
+            {
+                return;
+            }
+
+            form.ApplyTo(_preferences);
+            Theme.Apply(_preferences.Theme, _preferences.UiScale);
+            WindowChrome.ApplyTitleBar(Handle, !Theme.IsLight);
+            BackColor = Theme.BackgroundTop;
+            if (_tray.ContextMenuStrip is { } trayMenu)
+            {
+                WindowChrome.ApplyDarkMenu(trayMenu);
+            }
+            ApplyRendererPreferences();
+            _dashboard.Invalidate();
+
+            if (_preferences.Overlay != _overlay)
+            {
+                if (_preferences.Overlay)
+                {
+                    EnableOverlay(restoreClickThrough: true);
+                }
+                else
+                {
+                    DisableOverlay();
+                }
+            }
+            else if (_overlay)
+            {
+                Opacity = _preferences.OverlayOpacity;
+                ApplyClickThrough(_preferences.OverlayClickThrough);
+            }
+
+            TopMost = _preferences.AlwaysOnTop || _overlay;
+            SavePreferences();
+            UpdateOverlayMenu();
+            UpdateLayoutMenu();
+        }
+        finally
+        {
+            _settingsOpen = false;
+        }
+    }
+
+    private void ShowCredits()
+    {
+        if (_settingsOpen)
+        {
+            return;
+        }
+
+        _settingsOpen = true;
+
+        try
+        {
+            using var form = new CreditsForm();
+            var restoreTopMost = TopMost;
+            TopMost = false;
+            form.TopMost = true;
+            form.Shown += (_, _) =>
+            {
+                form.Activate();
+                form.BringToFront();
+            };
+
+            form.ShowDialog(this);
+            TopMost = restoreTopMost;
+        }
+        finally
+        {
+            _settingsOpen = false;
+        }
+    }
+
+    private void ToggleOverlay()
+    {
+        if (_overlay)
+        {
+            DisableOverlay();
+        }
+        else
+        {
+            EnableOverlay(restoreClickThrough: true);
+        }
+    }
+
+    private void EnableOverlay(bool restoreClickThrough)
+    {
+        if (_overlay)
+        {
+            return;
+        }
+
+        if (_windowed)
+        {
+            UpdateSavedBounds();
+        }
+
+        var restoreWindowed = _preferences.Windowed;
+        _overlay = true;
+        _preferences.Overlay = true;
+
+        ApplyLayout(CurrentScreen(), windowed: false, save: false);
+        _preferences.Windowed = restoreWindowed;
+
+        FormBorderStyle = FormBorderStyle.None;
+        ShowInTaskbar = false;
+        Opacity = _preferences.OverlayOpacity;
+        TopMost = true;
+
+        if (restoreClickThrough)
+        {
+            ApplyClickThrough(_preferences.OverlayClickThrough);
+        }
+        else
+        {
+            // Nunca se restaura al arrancar: solo se activa de forma explícita.
+            _clickThrough = false;
+            _preferences.OverlayClickThrough = false;
+        }
+
+        _preferences.Save();
+        UpdateOverlayMenu();
+    }
+
+    private void DisableOverlay()
+    {
+        if (!_overlay)
+        {
+            return;
+        }
+
+        _overlay = false;
+        _preferences.Overlay = false;
+        ApplyClickThrough(false);
+        Opacity = 1.0;
+
+        ApplyLayout(CurrentScreen(), windowed: _preferences.Windowed, save: false);
+        _preferences.Save();
+        UpdateOverlayMenu();
+    }
+
+    private void ApplyClickThrough(bool enabled)
+    {
+        if (enabled && !_overlay)
+        {
+            return;
+        }
+
+        if (IsHandleCreated)
+        {
+            var style = GetWindowLong(Handle, GwlExStyle);
+            style = enabled
+                ? style | WsExTransparent | WsExLayered
+                : style & ~WsExTransparent;
+            SetWindowLong(Handle, GwlExStyle, style);
+        }
+
+        _clickThrough = enabled;
+        _preferences.OverlayClickThrough = enabled;
+
+        if (enabled)
+        {
+            _clickThroughGuard.Start();
+        }
+        else
+        {
+            _clickThroughGuard.Stop();
+        }
+
+        UpdateOverlayMenu();
+    }
+
+    private void UpdateOverlayMenu()
+    {
+        if (_overlayItem != null)
+        {
+            _overlayItem.Checked = _overlay;
+        }
+
+        if (_clickThroughItem != null)
+        {
+            _clickThroughItem.Checked = _clickThrough;
+            _clickThroughItem.Enabled = _overlay;
+        }
+
+        if (_alwaysOnTopItem != null)
+        {
+            _alwaysOnTopItem.Checked = _preferences.AlwaysOnTop;
+        }
+
+        if (_windowedItem != null)
+        {
+            _windowedItem.Checked = _windowed && !_overlay;
+        }
     }
 
     private void OnDisplayChanged()
     {
         if (IsDisposed || !IsHandleCreated)
         {
+            return;
+        }
+
+        if (_overlay)
+        {
+            Bounds = CurrentScreen().Bounds;
             return;
         }
 
@@ -360,6 +883,7 @@ public sealed class MainForm : Form
     private NotifyIcon BuildTrayIcon()
     {
         var menu = new ContextMenuStrip();
+        WindowChrome.ApplyDarkMenu(menu);
 
         _screenMenu = new ToolStripMenuItem("Pantalla");
         _screenMenu.DropDownOpening += (_, _) => RebuildScreenMenu();
@@ -374,30 +898,71 @@ public sealed class MainForm : Form
         _windowedItem.Click += (_, _) => ToggleWindowed();
         menu.Items.Add(_windowedItem);
 
+        _layoutMenu = new ToolStripMenuItem("Diseño")
+        {
+            ShortcutKeyDisplayString = "Ctrl+Shift+L"
+        };
+        AddLayoutItem(_layoutMenu, "Automático según la ventana", LayoutMode.Auto);
+        AddLayoutItem(_layoutMenu, "Completo · 1920 × 1080", LayoutMode.Full);
+        AddLayoutItem(_layoutMenu, "Compacto · 1280 × 720", LayoutMode.Compact);
+        AddLayoutItem(_layoutMenu, "Mínimo · 960 × 540", LayoutMode.Minimal);
+        menu.Items.Add(_layoutMenu);
+
         menu.Items.Add(new ToolStripSeparator());
 
-        var weatherMenu = new ToolStripMenuItem("Clima");
-
-        _weatherAutoItem = new ToolStripMenuItem("Automático (juego)")
+        _overlayItem = new ToolStripMenuItem("Superposición")
         {
-            Checked = _preferences.WeatherAuto,
-            CheckOnClick = false
+            ShortcutKeyDisplayString = "Ctrl+Shift+F",
+            CheckOnClick = false,
+            Checked = _overlay
         };
-        _weatherAutoItem.Click += (_, _) => UseAutomaticWeather();
-        weatherMenu.DropDownItems.Add(_weatherAutoItem);
-        weatherMenu.DropDownItems.Add(new ToolStripSeparator());
+        _overlayItem.Click += (_, _) => ToggleOverlay();
+        menu.Items.Add(_overlayItem);
 
-        AddWeatherItem(weatherMenu, "Despejado", WeatherCondition.Clear);
-        AddWeatherItem(weatherMenu, "Nublado", WeatherCondition.Cloudy);
-        AddWeatherItem(weatherMenu, "Lluvia", WeatherCondition.Rain);
-        AddWeatherItem(weatherMenu, "Tormenta", WeatherCondition.Storm);
+        _clickThroughItem = new ToolStripMenuItem("Clic a través")
+        {
+            ShortcutKeyDisplayString = "Ctrl+Shift+O",
+            CheckOnClick = false,
+            Checked = _clickThrough,
+            Enabled = _overlay
+        };
+        _clickThroughItem.Click += (_, _) => ApplyClickThrough(!_clickThrough);
+        menu.Items.Add(_clickThroughItem);
 
-        menu.Items.Add(weatherMenu);
+        _alwaysOnTopItem = new ToolStripMenuItem("Siempre visible")
+        {
+            CheckOnClick = false,
+            Checked = _preferences.AlwaysOnTop
+        };
+        _alwaysOnTopItem.Click += (_, _) =>
+        {
+            _preferences.AlwaysOnTop = !_preferences.AlwaysOnTop;
+            TopMost = _preferences.AlwaysOnTop || _overlay;
+            UpdateOverlayMenu();
+            SavePreferences();
+        };
+        menu.Items.Add(_alwaysOnTopItem);
+
+        menu.Items.Add(new ToolStripSeparator());
+
+        var settings = new ToolStripMenuItem("Ajustes…")
+        {
+            ShortcutKeyDisplayString = "Ctrl+Shift+A"
+        };
+        settings.Click += (_, _) => ShowSettings();
+        menu.Items.Add(settings);
+
+        var credits = new ToolStripMenuItem("Créditos");
+        credits.Click += (_, _) => ShowCredits();
+        menu.Items.Add(credits);
+
         menu.Items.Add(new ToolStripSeparator());
 
         var exit = new ToolStripMenuItem("Salir");
         exit.Click += (_, _) => Close();
         menu.Items.Add(exit);
+
+        WindowChrome.ApplyDarkMenu(menu.Items);
 
         var tray = new NotifyIcon
         {
@@ -456,6 +1021,8 @@ public sealed class MainForm : Form
                 Enabled = false
             });
         }
+
+        WindowChrome.ApplyDarkMenu(_screenMenu.DropDownItems);
     }
 
     private void UpdateWindowMenu()
@@ -479,50 +1046,17 @@ public sealed class MainForm : Form
         }
     }
 
-    private void AddWeatherItem(ToolStripMenuItem parent, string label, WeatherCondition condition)
+    private void AddLayoutItem(ToolStripMenuItem parent, string label, LayoutMode mode)
     {
         var item = new ToolStripMenuItem(label)
         {
-            Checked = !_preferences.WeatherAuto && condition == _preferences.Weather,
+            Checked = _preferences.Layout == mode,
             CheckOnClick = false,
-            Tag = condition
+            Tag = mode
         };
 
-        item.Click += (_, _) =>
-        {
-            _reader.WeatherAuto = false;
-            _reader.Weather = condition;
-            _preferences.WeatherAuto = false;
-            _preferences.Weather = condition;
-            SavePreferences();
-            UpdateWeatherChecks();
-        };
-
-        _weatherItems.Add(item);
+        item.Click += (_, _) => SetLayout(mode);
         parent.DropDownItems.Add(item);
-    }
-
-    private void UseAutomaticWeather()
-    {
-        _reader.WeatherAuto = true;
-        _preferences.WeatherAuto = true;
-        SavePreferences();
-        UpdateWeatherChecks();
-    }
-
-    private void UpdateWeatherChecks()
-    {
-        if (_weatherAutoItem != null)
-        {
-            _weatherAutoItem.Checked = _preferences.WeatherAuto;
-        }
-
-        foreach (var item in _weatherItems)
-        {
-            item.Checked = !_preferences.WeatherAuto
-                && item.Tag is WeatherCondition condition
-                && condition == _preferences.Weather;
-        }
     }
 
     private static Screen? FindTargetScreen(string? target)
@@ -640,6 +1174,18 @@ public sealed class MainForm : Form
 
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool EnumDisplayDevices(

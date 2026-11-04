@@ -1,0 +1,10 @@
+# Intermedios del instalador
+installer/bin/
+installer/obj/
+installer/payload.zip
+
+# Distribución desempaquetada y setup
+# El setup se publica como asset en GitHub Releases.
+dist/ATS-Telemetry-Windows/
+dist/ATS-Telemetry-Setup/
+dist/ATS-Telemetry-Setup.exe

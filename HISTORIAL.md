@@ -4,7 +4,7 @@ Este documento resume el proceso de creación y evolución de la aplicación, la
 decisiones importantes y el estado en que quedó el proyecto. Está pensado para
 leer el contexto sin tener que reconstruirlo a partir del código.
 
-Última actualización: **28 de octubre de 2026**.
+Última actualización: **31 de octubre de 2026**.
 
 ---
 
@@ -337,13 +337,13 @@ dist\ATS-Telemetry-Windows\ATSTelemetry.exe --demo --windowed
 
 ---
 
-## 7. Estado actual (28/10/2026)
+## 7. Estado actual (31/10/2026)
 
 - La app macOS original se conserva sin cambios; el desarrollo activo es el
   port Windows de **`Windows Native Final`**.
 - El proyecto compila en Release y se publica como ejecutable autocontenido
   `win-x64` mediante `build.ps1`.
-- La interfaz activa es el rediseño **FH6 v2.3**, descrito en la sección 14.
+- La interfaz activa es el rediseño **FH6 v2.7**, descrito en la sección 14.
 - El panel se dibuja a **60 FPS** (16 ms) con SkiaSharp/OpenGL y se escala desde
   el lienzo virtual de 1920×1080.
 - El plugin `scs-telemetry.dll` está incluido en la app y se instaló en ATS y
@@ -355,22 +355,35 @@ dist\ATS-Telemetry-Windows\ATSTelemetry.exe --demo --windowed
   pasivo.
 - `dist\ATS-Telemetry-Windows` contiene la app final y
   `dist\ATS-Telemetry-Windows.zip` el paquete portátil completo.
-- La v2.3 se validó en demo y con telemetría real de ATS a 1280×720 y
-  1920×1080. El perfil **FLACO INC** muestra su logo real `logo_4` a la derecha
-  del panel de empresa y el nombre a la izquierda; el panel de carga ya no tiene
-  miniatura. También se comprobaron la secuencia de arranque, el fundido de los
-  avisos y el chip de crucero. La prueba completa de ETS2, la reserva de
-  combustible y los mensajes inferidos siguen pendientes.
+- La v2.7 corrige el comportamiento de los testigos: el **CHECK** solo se ve con
+  el motor encendido (en blanco sin avería y en amarillo cuando el juego lo
+  marca) y el chip de **crucero** queda siempre visible, atenuado con `-- km/h`
+  cuando está inactivo. Se mantienen la tarjeta de **combustible** encendida sin
+  motor y el fundido de 0,5 s al cambiar de camión.
+- La v2.5 había validado en demo a 1280×720 y 1920×1080 el panel de daños
+  reducido a CAMIÓN, TRÁILER y CARGA, el porcentaje junto a la barra y la imagen
+  del camión centrada con margen uniforme. El catálogo cubre los **45 modelos
+  oficiales** (19 ATS + 26 ETS2) y los 45 mapeos se comprobaron sobre la DLL
+  compilada (**45 probados, 0 fallos**). El perfil **FLACO INC** conserva su logo
+  real `logo_4`. ATS y ETS2 no estaban en ejecución al cerrar la versión, así que
+  la validación en vivo de varios modelos queda pendiente; también siguen
+  pendientes la prueba completa de ETS2, la reserva de combustible y los mensajes
+  inferidos.
 
 ### Siguientes pasos recomendados
 
-1. Probar la v2.3 con telemetría real de ETS2: velocidad, RPM, marcha,
+1. Abrir ATS y ETS2 y confirmar que el panel carga las imágenes de varios
+   modelos mediante `TruckId`; probar también un modelo con mod o sin imagen
+   para ver el fallback textual.
+2. Probar la v2.7 con telemetría real de ETS2: velocidad, RPM, marcha,
    testigos, check engine rotulado, GPS, clima, combustible, indicadores
    verticales de agua y aire, avisos de batería/aceite y transición de
    encendido/apagado. Validar también los avisos generados por entregas,
-   multas, peajes y cambios de saldo.
-2. Confirmar el clima automático/manual y el aviso de reserva desde la bandeja.
-3. Verificar el cambio de **DINERO TOTAL** tras un guardado rápido.
+   multas, peajes y cambios de saldo, el comportamiento del CHECK sin motor,
+   el chip de crucero inactivo/activo, la tarjeta de combustible encendida y el
+   fundido de 0,5 s al cambiar de camión.
+3. Confirmar el clima automático/manual y el aviso de reserva desde la bandeja.
+4. Verificar el cambio de **DINERO TOTAL** tras un guardado rápido.
 
 ---
 
@@ -386,8 +399,8 @@ dist\ATS-Telemetry-Windows\ATSTelemetry.exe --demo --windowed
   lienzo, ventana, pantalla y bandeja.
 - `src/TelemetryReader.cs`, `src/WeatherReader.cs`,
   `src/BankBalanceReader.cs` y `src/Snap.cs`: lectura de datos.
-- `Assets/Indicators`, `Assets/BrandLogos`, `Assets/CompanyLogos` y
-  `Assets/Plugins`: recursos de la app portátil.
+- `Assets/Indicators`, `Assets/BrandLogos`, `Assets/CompanyLogos`,
+  `Assets/TruckImages` y `Assets/Plugins`: recursos de la app portátil.
 
 ---
 
@@ -499,7 +512,7 @@ reconstruido en `dist\ATS-Telemetry-Windows`.
 
 ---
 
-## 14. Rediseño FH6 (27-28/10/2026)
+## 14. Rediseño FH6 (27-31/10/2026)
 
 ### Motivación y alcance
 
@@ -516,17 +529,19 @@ Se conservaron sin cambios:
 - El icono, la bandeja, el modo ventana/F11 y la memoria de pantalla.
 - El empaquetado portátil en `dist\ATS-Telemetry-Windows`.
 
-### Distribución final (v2.3)
+### Distribución final (v2.7)
 
 - **Cabecera:** logotipo de marca, camión y cilindrada centrados; estado y
   monitor a la derecha; línea divisoria en `y = 92`.
 - **Testigos:** fila centrada de 13 puestos con iconos de 32 px. El check engine
-  ocupa una celda de 88 px con `CHECK` / `ENGINE` en dos filas. Con el motor
-  apagado la fila queda vacía; al arrancar todos los testigos se encienden
-  durante 1,25 s.
+  ocupa una celda de 88 px con `CHECK` / `ENGINE` en dos filas y **solo se
+  dibuja con el motor encendido**: en blanco si no hay avería y en amarillo
+  cuando el juego lo marca. Sin motor desaparece con el resto de la fila. Al
+  arrancar todos los testigos se encienden durante 1,25 s.
 - **Cluster:** arco de 224° y máximo de 160 km/h; número central de 184 px;
-  crucero en chip de 95×48 sobre la velocidad, con relleno verde al 10 % y
-  encuadre al 42 %; marcha de 42 px; barra de RPM de 330×14 y odómetro total de
+  **chip de crucero siempre visible**, de 95×48 sobre la velocidad: en gris con
+  `-- km/h` cuando está inactivo y con relleno verde al 10 %, encuadre al 42 % y
+  la velocidad fijada cuando está conectado; marcha de 42 px; barra de RPM de 330×14 y odómetro total de
   **220×38** con cifra de **26 px** bajo la barra. A los lados del chip quedan
   los testigos de batería (izquierda) y aceite (derecha), de 32×32, negros
   apagados y rojos encendidos. El velocímetro, el tacómetro y la barra de RPM
@@ -539,6 +554,14 @@ Se conservaron sin cambios:
   rumbo, origen, destino, distancias, llegada, hora prevista, progreso y
   posición. La señal de límite de 88 px queda en el borde derecho, con fondo
   blanco, número negro y aro rojo.
+- **Daños:** solo CAMIÓN, TRÁILER y CARGA, con etiqueta a la izquierda, barra en
+  el centro y porcentaje a la derecha. El área libre inferior (`x + 24`,
+  `y + 190`, `352 × 178`) muestra la imagen del modelo activo desde
+  `Assets\TruckImages`, centrada, escalada de forma proporcional, con 8 px de
+  margen interior y esquinas redondeadas. Hay **45 JPG de 1200 × 600** (19 ATS +
+  26 ETS2), uno por modelo oficial. Si no hay imagen se muestra un aviso
+  discreto; sin señal no se dibuja nada. Al cambiar de modelo, la imagen anterior
+  y la nueva se funden en **0,5 s**; la primera carga aparece de inmediato.
 - **Indicadores verticales:** agua en `486, 300` y aire en `1346, 300`, ambos de
   `88×440`, entre los paneles laterales y el arco. Sin título ni icono; barra de
   `y + 22` a `y + 338`, separador en `y + 362` y pie centrado con cifra, unidad
@@ -547,12 +570,14 @@ Se conservaron sin cambios:
 - **Franja inferior:** combustible (240×142), panel de avisos (438×142) y clima
   (237×142), con 16 px entre tarjetas y 22/23 px contra los paneles laterales.
   Combustible y clima se reducen un 25 % y el panel central crece un 50 %. El
-  combustible también hace el barrido de arranque. El panel central muestra
-  mensajes del juego en naranja, con 2,5 s visible y 0,5 s de fundido; sin
-  mensajes queda `SIN AVISOS`.
-- **Apagado:** sin motor se apagan testigos, tacómetro/RPM, batería/aceite,
-  agua/aire y combustible; empresa, carga, daños, GPS, clima, cabecera y pie
-  siguen visibles.
+  combustible también hace el barrido de arranque. La tarjeta permanece
+  encendida con el motor apagado y conserva nivel, galones, autonomía y barra. El
+  panel central muestra mensajes del juego en naranja, con 2,5 s visible y 0,5 s
+  de fundido; sin mensajes queda `SIN AVISOS`.
+- **Apagado:** sin motor se apagan todos los testigos (incluido el CHECK),
+  tacómetro/RPM, batería/aceite y agua/aire; el chip de crucero queda en gris con
+  `-- km/h` y la tarjeta de combustible sigue encendida. Empresa, carga, daños,
+  GPS, clima, cabecera y pie siguen visibles.
 - **Iconos de título:** todos los paneles usan iconos de **22 px**, tomando el
   de clima como referencia.
 - **Pie:** estado de lectura y modo demo/datos en vivo.
@@ -575,35 +600,81 @@ Se conservaron sin cambios:
 | v2.1 | 28/10/2026 | Chip de crucero con tinte verde sutil; el velocímetro se suma al barrido de arranque (0→160→real); el panel central muestra avisos del juego en naranja, 2,5 s visible y 0,5 s de fundido. |
 | v2.2 | 28/10/2026 | Emblema de 62×62 con las iniciales de la empresa; `SALDO DEL BANCO` reubicado sobre la cifra; miniatura vectorial de 112×74 en carga según el tipo de mercancía. |
 | v2.3 | 28/10/2026 | Logo real del perfil (`logo_4` para FLACO INC) a la derecha con margen de 24 px; nombre a la izquierda; se elimina la miniatura de carga y sus métodos. |
+| v2.4 | 29/10/2026 | Daños reducido a CAMIÓN, TRÁILER y CARGA con porcentaje junto a la barra; imagen del camión actual (W900) centrada en el hueco inferior, con margen, escalado proporcional y fallback textual. |
+| v2.5 | 30/10/2026 | Catálogo completo: 45 modelos oficiales (19 ATS + 26 ETS2) con JPG 1200 × 600; resolución por `TruckId` y validación automática de los 45 mapeos (0 fallos). |
+| v2.6 | 30/10/2026 | Encuadre del CHECK siempre visible; tarjeta de combustible encendida sin motor; fundido cruzado de 0,5 s al cambiar la imagen del camión. |
+| v2.7 | 31/10/2026 | Se revierte el CHECK: oculto sin motor, blanco con motor y amarillo con avería. El chip de crucero pasa a ser el indicador siempre visible, atenuado con `-- km/h` cuando está inactivo. |
 
-### Estado final v2.3
+### Estado final v2.7
 
 - El flujo de trabajo compila y prueba **directamente la app final**:
   `build.ps1` reconstruye `dist\ATS-Telemetry-Windows` y las pruebas se hacen
   con ese mismo ejecutable, sin una copia demo separada.
-- `dist\ATS-Telemetry-Windows.zip` se regeneró con la carpeta portátil completa
-  y los ocho PNG de `Assets\CompanyLogos`: 47 entradas, 71.489.903 bytes,
-  SHA-256 `15DAC73CFAB5C2CED9F8DD569952D650359E568C8380B9C42E6A12813942DF9E`.
-  El EXE final tiene SHA-256
-  `A0C8D9E781A1E1C20BEB1E8712A781103740042F5B3B604133BE3A3648664D91`.
-- Se validó en modo demo a **1280×720** y **1920×1080**, y con telemetría real de
-  ATS en ambos tamaños. `FLACO INC` muestra su logo real `logo_4` a la derecha,
-  con margen de 24 px, y el nombre a la izquierda; el panel de carga no tiene
-  miniatura. No hay solapes ni recortes; los testigos, el velocímetro, el
-  tacómetro/RPM, las barras de agua/aire y el combustible se apagan con el motor
-  y ejecutan el auto-test al arrancar.
-- Capturas de referencia:
-  `C:\Users\hs-se\AppData\Local\Temp\opencode\fh6-v23-final-demo-windowed.png`,
-  `fh6-v23-final-demo-1920.png` y `fh6-v23-final-live-1920.png`.
+- **Panel de daños:** solo CAMIÓN, TRÁILER y CARGA. Cada fila muestra etiqueta,
+  barra y porcentaje; se retiraron MOTOR, SISTEMA MÁS AFECTADO, PROMEDIO GENERAL
+  y la barra inferior.
+- **Imagen del camión:** ocupa `x + 24`, `y + 190`, `352 × 178` dentro del panel.
+  Se escala proporcionalmente, se centra, conserva 8 px de margen interior y usa
+  recorte redondeado de 8 px con borde sutil. Al cambiar de modelo, la imagen
+  anterior y la nueva se funden en **0,5 s** con una curva `SmoothStep`; la
+  primera carga y el fallback aparecen de inmediato.
+- **Catálogo v2.5 (vigente):** `Assets\TruckImages` contiene **45 JPG de
+  1200 × 600** (calidad 90), uno por modelo oficial: **19 de ATS** y **26 de
+  ETS2**.
+  - ATS: capturas de concesionario de los sets `ATS_*_Stock` de la wiki de Truck
+    Simulator, recortadas a 2:1.
+  - ETS2: renders oficiales de la wiki sobre fondo de estudio neutro.
+  - DAF XF Electric: imagen real del blog de SCS Software
+    (`DAF XF Electric Blog 1.jpg`).
+  - Kenworth W900: se conserva el recorte original de
+    `ATS_Kenworth_Stock_06.png` usado desde la v2.4.
+  - La lista completa, las fuentes y el formato están en
+    `Assets\TruckImages\README.txt`.
+- **Resolución:** `TruckId` normalizado (`vehicle.kenworth.w900` →
+  `kenworth_w900`), variantes sin `_gtm`/`_mod`/`_custom` y respaldo
+  `TruckBrand` + `TruckName`. La demo usa W900 para validar el mapeo.
+- **Validación v2.7:** harness aislado sobre la DLL compilada. El CHECK no se
+  dibuja con el motor apagado, aparece en blanco con el motor encendido sin
+  avería y en amarillo con `EngineDmg = 18`. El chip de crucero se ve inactivo en
+  gris con `-- km/h` y activo en verde con `75 km/h`. La tarjeta de combustible
+  mantiene `50%`, `79/159 GAL`, `AUT. 480 KM` y barra con el motor apagado. El
+  fundido de 0,5 s se midió con capturas: inicio idéntico a la imagen anterior
+  (diferencia 0,000), mitad de transición distinta de ambos extremos (30,864 y
+  19,517) y final idéntico a la imagen nueva (0,000). También se capturó la app
+  final en demo a **1920×1080** y **1280×720**.
+- **Validación v2.6:** harness aislado con el motor apagado en el que el marco
+  del CHECK se dibujaba en gris; queda sustituido por el comportamiento v2.7.
+- **Validación v2.5:** los 45 mapeos se comprobaron por reflexión sobre la DLL
+  compilada: **45 probados, 0 fallos**. También se probó el fallback retirando
+  temporalmente el JPG (texto `IMAGEN DEL MODELO NO DISPONIBLE`) y el estado sin
+  señal (área vacía). La prueba con ATS/ETS2 real no pudo repetirse porque los
+  juegos no estaban en ejecución.
+- `dist\ATS-Telemetry-Windows.zip` se regeneró con la carpeta portátil completa,
+  los 45 JPG y su `README.txt`: **93 entradas, 75.179.454 bytes**, SHA-256
+  `87E7BC9B05E0AF0056F72CCD083F0598A1CFC4DEEF02E3223D8896044AED74E6`.
+  El EXE final (178.721.534 bytes) tiene SHA-256
+  `6AB88739EF3144C9D483C904FD617AFD5D1F52F969F7CFE79D2A5A4D715E07EF`;
+  la carpeta portátil completa ocupa 183.111.611 bytes (93 archivos).
+- Capturas de referencia: `screenshots\fh6-v27-1920.png` y
+  `screenshots\fh6-v27-1280.png`; la v2.6 queda en
+  `screenshots\fh6-v26-1920.png` y `fh6-v26-1280.png`, la v2.5 en
+  `screenshots\fh6-v25-1920.png` y `fh6-v25-1280.png`, y la v2.4 en
+  `screenshots\fh6-v24-etapa2-1920.png` y `fh6-v24-etapa2-1280.png`.
 - La documentación quedó sincronizada: `README.md`, `README-FH6.md`,
-  `GUIA-INTERFAZ.md` y este historial.
+  `GUIA-INTERFAZ.md`, `EMPIEZA-AQUI.txt`, `Assets\TruckImages\README.txt`,
+  `LEEME.txt` y este historial.
 
 ### Pendiente
 
-- Probar la v2.3 con telemetría real de ETS2: velocidad, RPM, marcha,
+- Validar en vivo varios modelos en ATS y ETS2 y comprobar que cada `TruckId`
+  carga su JPG; probar también el fallback con un modelo de mod o sin imagen.
+- Probar la v2.7 con telemetría real de ETS2: velocidad, RPM, marcha,
   testigos, check engine rotulado, GPS, clima, combustible, indicadores
   verticales de agua y aire, avisos de batería/aceite y transición de
   encendido/apagado.
+- Validar en vivo el CHECK oculto sin motor, blanco con motor y amarillo con
+  avería; el chip de crucero inactivo/activo, la tarjeta de combustible
+  encendida y el fundido de 0,5 s al cambiar de camión.
 - Validar que las entregas, multas, peajes y cambios de saldo generan un aviso
   único y con el importe correcto.
 - Probar otros perfiles con `logo_0`..`logo_7` y confirmar que un logo

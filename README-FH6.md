@@ -4,7 +4,7 @@ Bitácora viva del cambio de interfaz del panel Windows. **Actualizar este archi
 después de cada decisión o bloque de trabajo**, para poder retomarlo más adelante
 sin depender del historial del chat.
 
-Última actualización: **28 de octubre de 2026 — v2.3 con el logo real del perfil del juego, sin miniatura de carga y con el nombre de la empresa a la izquierda**.
+Última actualización: **31 de octubre de 2026 — v2.7 cerrada con el CHECK normal (oculto sin motor, blanco con motor y amarillo con avería) y el chip de crucero siempre visible**.
 
 ## Objetivo
 
@@ -61,7 +61,7 @@ Improved Dashboard*, y el cluster digital de serie):
   divisoria tenue en `y = 92`.
 - Testigos: fila compacta centrada en la zona central, `y = 106..172`; el check
   engine va encuadrado entre las direccionales, con el icono y el texto
-  `CHECK` / `ENGINE` en dos filas.
+  `CHECK` / `ENGINE` en dos filas. Solo se dibuja con el motor encendido.
 - Cluster central: centro en `(960, 548)`, radio ~302, arco de 224°.
   Número de velocidad centrado; crucero en chip vertical encima, marcha debajo
   de `km/h` y odómetro total compacto bajo la barra de RPM. El límite de
@@ -70,10 +70,12 @@ Improved Dashboard*, y el cluster digital de serie):
   de `88 × 440`. Quedan entre los paneles laterales y el arco del cluster, sin
   título ni icono; la barra sube hasta `y + 338` y el pie centrado muestra
   cifra, unidad y subtítulo en 28/10/6.5 px.
-- Encendido: con el motor apagado se apagan testigos, tacómetro/RPM, batería y
-  aceite, agua/aire y combustible; los paneles laterales siguen visibles. Al
-  arrancar, todos los testigos se encienden un momento y el velocímetro, el
-  tacómetro y las barras barren hasta el máximo antes de volver a la telemetría.
+- Encendido: con el motor apagado se apagan todos los testigos (incluido el
+  CHECK), tacómetro/RPM, batería y aceite, y agua/aire; el chip de **crucero**
+  queda visible en gris con `-- km/h` y la tarjeta de **combustible** sigue
+  encendida. Los paneles laterales también siguen visibles. Al arrancar, todos
+  los testigos se encienden un momento y el velocímetro, el tacómetro y las
+  barras barren hasta el máximo antes de volver a la telemetría.
 - Indicadores inferiores: combustible (`240 × 142`), panel de avisos
   (`438 × 142`) y clima (`237 × 142`), todos a `y = 794..936`, con 16 px entre
   tarjetas y 22/23 px contra los paneles laterales. Combustible y clima se
@@ -102,7 +104,8 @@ Improved Dashboard*, y el cluster digital de serie):
    con icono, estado, hora del juego y DÍA/NOCHE. El menú de clima y la lectura
    automática no cambian.
 6. **Daños** incorpora la fila **MOTOR** (`EngineDmg`), que ya se usa para el
-   testigo de check engine.
+   testigo de check engine. *(Retirada en v2.4 junto con `SISTEMA MÁS AFECTADO`
+   y `PROMEDIO GENERAL`; el panel queda en CAMIÓN, TRÁILER y CARGA.)*
 7. **Empresa** añade **GANANCIA NETA** (ingreso del trabajo − egresos) para
    aprovechar la altura del panel; no sustituye ningún dato existente.
 8. **El GPS concentra el viaje**: origen, destino, rumbo, faltan, recorrido,
@@ -197,6 +200,47 @@ Improved Dashboard*, y el cluster digital de serie):
     ambos tamaños. El perfil **FLACO INC** muestra `logo_4` a la derecha, el
     nombre a la izquierda y el panel de carga sin miniatura, sin solapes ni
     recortes.
+41. **Daños v2.4 (etapa 1):** el panel se limita a **CAMIÓN**, **TRÁILER** y
+    **CARGA**. Cada fila coloca la etiqueta a la izquierda, la barra en el centro
+    y el porcentaje a la derecha. Se eliminan `MOTOR`, `SISTEMA MÁS AFECTADO`,
+    `PROMEDIO GENERAL` y la barra inferior; la mitad inferior queda libre.
+42. **Imagen del camión v2.4 (etapa 2):** el hueco libre (`x + 24`, `y + 190`,
+    `352 × 178`) muestra la imagen del modelo activo tal como aparece en el
+    concesionario. Se escala de forma proporcional, se centra y conserva **8 px**
+    de margen interior; el recorte tiene esquinas redondeadas de 8 px y un borde
+    sutil al 12 % de blanco.
+43. **Resolución de imagen v2.4:** `TruckImage` prueba primero el `TruckId`
+    normalizado (`vehicle.kenworth.w900` → `kenworth_w900`), después las
+    variantes sin sufijos de mod (`_gtm`, `_mod`, `_custom`) y, por último,
+    `TruckBrand` + `TruckName`. Los JPG viven en `Assets\TruckImages`. Si no hay
+    imagen se muestra `IMAGEN DEL MODELO NO DISPONIBLE`; sin señal no se dibuja
+    nada.
+44. **Asset v2.4:** `kenworth_w900.jpg` es una captura real del concesionario de
+    ATS (wiki de Truck Simulator), recortada a 2:1 y guardada a 1200 × 600. La
+    imagen es por modelo, no por pintura ni configuración exacta del jugador. La
+    demo pasa a `vehicle.kenworth.w900` / `W900` para validarla.
+45. **Cobertura v2.5:** `Assets\TruckImages` pasa de 1 a **45 JPG** de 1200 × 600
+    (calidad 90): **19 modelos de ATS** y **26 de ETS2**. Cada archivo usa el
+    `TruckId` sin `vehicle.` y con puntos y espacios convertidos en guiones bajos;
+    se conserva el typo del juego (`intnational_9900i.jpg`).
+46. **Fuentes v2.5:** ATS usa capturas de concesionario de los sets
+    `ATS_*_Stock`; ETS2 usa renders oficiales sobre fondo de estudio neutro;
+    DAF XF Electric usa una imagen real del blog de SCS Software; el W900
+    conserva el recorte original de la v2.4. No se usan dibujos generados ni el
+    logotipo de la marca como sustituto.
+47. **Marco del CHECK v2.6:** el encuadre del testigo se dibuja siempre. Con el
+    motor apagado usa relleno blanco al 4,5 % y borde al 22 %; el icono y el
+    texto quedan atenuados. Con el testigo activo o durante el chequeo de
+    bombillas recupera el amarillo y el brillo normal.
+48. **Combustible v2.6:** se elimina el retorno anticipado que ocultaba la
+    tarjeta sin motor. La tarjeta sigue mostrando porcentaje, galones, autonomía
+    y barra; sin motor la animación de encendido no se aplica y se usa el nivel
+    real.
+49. **Fundido de imagen v2.6:** `DrawFh6TruckImage` conserva la imagen anterior y
+    la nueva y las mezcla con `AlphaMatrix` y `SmoothStep` durante **0,5 s**. Solo
+    se activa cuando cambia la clave resuelta del modelo; la primera carga y el
+    fallback textual aparecen de inmediato. Al perder la señal se reinicia el
+    estado para no arrastrar una transición vieja.
 
 ## Criterios de validación
 
@@ -207,6 +251,22 @@ Improved Dashboard*, y el cluster digital de serie):
 - [x] Logo real del perfil: `FLACO INC` + `logo_4` visibles a 1280×720 y
       1920×1080, con margen derecho de 24 px.
 - [x] Carga sin miniatura: nombre y tipo usan todo el ancho en demo y en vivo.
+- [x] Daños v2.4: solo CAMIÓN, TRÁILER y CARGA, con porcentaje junto a la barra
+      y mitad inferior libre.
+- [x] Imagen del camión v2.5: W900 centrado, con margen y sin recortes a
+      1920×1080 y 1280×720.
+- [x] Catálogo v2.5: 45 modelos oficiales (19 ATS + 26 ETS2) con JPG propio y
+      mapeo validado sobre la DLL compilada (45 probados, 0 fallos).
+- [x] Imagen del camión v2.6: fundido cruzado de 0,5 s al cambiar de modelo,
+      sin transición en la primera carga ni en el fallback.
+- [x] Testigo CHECK v2.6: el encuadre se ve con el motor apagado y recupera el
+      amarillo cuando el testigo está activo.
+- [x] Combustible v2.6: la tarjeta sigue encendida sin motor y muestra nivel,
+      galones, autonomía y barra.
+- [ ] Validación en vivo de varios modelos en ATS y ETS2, y fallback con un
+      modelo de mod o sin imagen.
+- [x] Fallback de imagen: texto discreto si el modelo no tiene JPG; sin señal no
+      se dibuja nada.
 - [ ] Combustible sigue avisando de reserva y muestra autonomía.
 - [ ] Clima automático y manual siguen funcionando desde la bandeja.
 - [x] Ningún texto se sale de su tarjeta al escalar a 1280×720 y 1920×1080.
@@ -224,11 +284,11 @@ Improved Dashboard*, y el cluster digital de serie):
 |---|---|---|
 | 0 | Analizar render actual, datos disponibles y referencia FH6 | Hecho |
 | 1 | Definir distribución, paleta y criterios | Hecho |
-| 2 | Implementar cabecera, cluster y tarjetas FH6 | Hecho (v2.3) |
+| 2 | Implementar cabecera, cluster y tarjetas FH6 | Hecho (v2.6) |
 | 3 | Ajustar paneles laterales y textos | Hecho (v1.3) |
-| 4 | Compilar y revisar en modo demo (capturas) | Hecho (v2.3, app final, 1280, 1920, arranque, avisos y logo real) |
-| 5 | Probar con telemetría real | Parcial (ATS real: logo, empresa, carga, daños y GPS) |
-| 6 | Actualizar documentación y `dist` | Hecho (README, GUIA, HISTORIAL, `dist` y ZIP al día) |
+| 4 | Compilar y revisar en modo demo (capturas) | Hecho (v2.6, app final, 1280, 1920, arranque, avisos, logo real, catálogo de 45 imágenes, CHECK sin motor, combustible sin motor y fundido de 0,5 s) |
+| 5 | Probar con telemetría real | Parcial (ATS real: logo, empresa, carga, daños y GPS; falta validar varios modelos en vivo) |
+| 6 | Actualizar documentación y `dist` | Hecho (README, GUIA, HISTORIAL, `dist` y ZIP al día en v2.6) |
 
 ### v1 — 27/10/2026
 
@@ -699,6 +759,160 @@ Pendiente de la siguiente iteración:
       personalizado de mod, sin PNG en `Assets\CompanyLogos`, degrada al nombre.
 - [ ] Completar la validación de telemetría real de ETS2.
 
+### v2.4 — 29/10/2026
+
+Decimoquinta iteración, cerrada en dos etapas sobre el panel de daños. Capturas:
+`screenshots\fh6-v24-etapa2-1920.png` y `screenshots\fh6-v24-etapa2-1280.png`.
+
+- **Etapa 1 — daños compactos:** el panel conserva su tamaño de `400 × 380` en
+  `1456, 116`, pero muestra solo **CAMIÓN**, **TRÁILER** y **CARGA**. Cada fila
+  lleva la etiqueta a la izquierda, la barra en el centro y el porcentaje a la
+  derecha. Se eliminan `MOTOR`, `SISTEMA MÁS AFECTADO`, `PROMEDIO GENERAL` y la
+  barra inferior. La mitad inferior queda libre.
+- **Etapa 2 — imagen del camión:** `DrawFh6TruckImage` ocupa el área
+  `x + 24`, `y + 190`, `352 × 178` (alto `height - 202`). La imagen se escala
+  de forma proporcional hasta el mayor tamaño que cabe, se centra en el área y
+  conserva **8 px** de margen interior en los cuatro lados. El recorte usa
+  esquinas redondeadas de 8 px y un borde blanco al 12 %.
+- **Resolución del modelo:** `TruckId` se normaliza a minúsculas y guiones bajos
+  (`vehicle.kenworth.w900` → `kenworth_w900`). Se prueba ese nombre, las
+  variantes sin `_gtm`, `_mod` y `_custom`, y después `TruckBrand` + `TruckName`.
+  Los JPG se cargan desde `Assets\TruckImages` y se cachean.
+- **Fallback:** si el modelo activo no tiene imagen se dibuja
+  `IMAGEN DEL MODELO NO DISPONIBLE` en texto discreto. Si no hay señal, el área
+  queda vacía; no se inventan dibujos ni se usa el logo de marca como sustituto.
+- **Asset:** `kenworth_w900.jpg` (1200 × 600, 137.580 bytes) se generó desde una
+  captura real del concesionario del W900 en la wiki de Truck Simulator,
+  recortando la zona del camión y la pared del showroom a 2:1. La demo pasa a
+  `vehicle.kenworth.w900` / `W900` para validar el mapeo.
+- **Validación:** demo a 1920×1080 y 1280×720. La imagen queda centrada, sin
+  recortes y con margen uniforme; los porcentajes siguen alineados con sus
+  barras y el resto del panel no cambia. También se comprobó el fallback
+  retirando temporalmente el JPG (aparece el texto discreto) y el estado sin
+  señal (el área queda vacía). ATS real no estaba en ejecución durante el
+  cierre, así que la prueba en vivo del mapeo queda como pendiente.
+- **App final:** `dist\ATS-Telemetry-Windows\ATSTelemetry.exe`, 178.721.534
+  bytes, SHA-256
+  `3E597262ED889304151DDC6957197AF32FC2B5D3A3BF851D3A6DD9D0BC2F4EF0`.
+- **Paquete portable:** `dist\ATS-Telemetry-Windows.zip`, 71.627.669 bytes,
+  49 entradas, SHA-256
+  `B7942A800DBA57493F6A7AD98504314DD9FFE838F4770B9F2D36E14206BF9E2C`.
+  Incluye `Assets\TruckImages\kenworth_w900.jpg` y su `README.txt`.
+
+Pendiente de la siguiente iteración:
+
+- [ ] Validar en ATS real el mapeo `vehicle.kenworth.w900 -> kenworth_w900.jpg`.
+- [ ] Añadir imágenes de concesionario para los demás modelos.
+- [ ] Valorar imágenes por configuración de pintura en una versión futura.
+
+### v2.5 — 30/10/2026
+
+Decimosexta iteración: cierre del catálogo de imágenes. Capturas:
+`screenshots\fh6-v25-1920.png` y `screenshots\fh6-v25-1280.png`.
+
+- **Cobertura:** 45 modelos oficiales instalados (**19 ATS + 26 ETS2**), un JPG
+  de 1200 × 600 y calidad 90 por modelo en `Assets\TruckImages`.
+- **Fuentes:** ATS usa capturas de concesionario de los sets `ATS_*_Stock`;
+  ETS2 usa renders oficiales sobre fondo de estudio neutro; DAF XF Electric usa
+  una imagen real del blog de SCS Software; el W900 conserva el recorte original
+  de la v2.4. No se usan dibujos generados ni el logo de marca.
+- **Resolución:** sin cambios. `TruckId` normalizado, variantes sin
+  `_gtm`/`_mod`/`_custom` y respaldo `TruckBrand` + `TruckName`. El nombre del
+  archivo sale del ID sin `vehicle.` y con puntos y espacios como guiones bajos;
+  se conserva el typo del juego (`intnational_9900i.jpg`).
+- **Validación:** harness de reflexión sobre la DLL compilada: **45 probados,
+  0 fallos**. Demo a 1920×1080 y 1280×720 con el W900 centrado y con margen. No
+  se pudo probar en vivo porque los juegos no estaban abiertos.
+- **App final:** `dist\ATS-Telemetry-Windows\ATSTelemetry.exe`, 178.721.534
+  bytes, SHA-256
+  `3E597262ED889304151DDC6957197AF32FC2B5D3A3BF851D3A6DD9D0BC2F4EF0`.
+- **Paquete portable:** `dist\ATS-Telemetry-Windows.zip`, 93 entradas,
+  75.178.911 bytes, SHA-256
+  `B682B3FEBCC00AD95D2208EE47C9E4570D50AFABEF68D2865A6997772E99F25F`.
+  Incluye los 45 JPG y su `README.txt`.
+
+Pendiente de la siguiente iteración:
+
+- [ ] Validar varios modelos en ATS y ETS2 reales, y el fallback con un modelo de
+      mod o sin imagen.
+- [ ] Valorar imágenes por configuración de pintura en una versión futura.
+
+### v2.6 — 30/10/2026
+
+Decimoséptima iteración: tres ajustes de comportamiento sobre la v2.5. Capturas:
+`screenshots\fh6-v26-1920.png` y `screenshots\fh6-v26-1280.png`.
+
+- **Marco del CHECK:** `DrawFh6IndicatorRow` dibuja el encuadre del testigo
+  siempre, aunque el motor esté apagado. Sin motor usa relleno blanco al 4,5 % y
+  borde al 22 %, con icono y texto atenuados; al activarse o durante el chequeo
+  de bombillas recupera el amarillo y el brillo normal. El resto de la tira sigue
+  apagado sin motor.
+- **Combustible sin motor:** `DrawFh6FuelCard` ya no retorna al detectar
+  `!ignitionOn`. La tarjeta permanece encendida y conserva porcentaje, galones,
+  autonomía y barra. Como `ignitionElapsed` es infinito con el motor apagado, se
+  muestra directamente el nivel real sin animación de barrido.
+- **Fundido de imagen:** `DrawFh6TruckImage` guarda la clave resuelta, la imagen
+  actual y la anterior. Al cambiar de modelo dibuja ambas con
+  `AlphaMatrix` durante **0,5 s** y una curva `SmoothStep`. La primera carga, el
+  fallback textual y el estado sin señal no usan transición.
+- **Validación:** harness aislado sobre la DLL compilada. Con motor apagado, el
+  marco del CHECK se ve y la tarjeta muestra `50%`, `79/159 GAL`,
+  `AUT. 480 KM` y barra. El fundido se midió con capturas: inicio igual a la
+  imagen anterior (0,000), mitad distinta de ambos extremos (30,864 y 19,517) y
+  final igual a la imagen nueva (0,000). Demo final a 1920×1080 y 1280×720.
+- **App final:** `dist\ATS-Telemetry-Windows\ATSTelemetry.exe`, 178.721.534
+  bytes, SHA-256
+  `04576B1A29593FD0A60A2A2C5E2D5829E9940BDFD8D59853A897234B2FE8AAE2`.
+- **Paquete portable:** `dist\ATS-Telemetry-Windows.zip`, 93 entradas,
+  75.179.327 bytes, SHA-256
+  `934D110BCF354B2C5B4635E4A7BE4B6312681D4D3D489F51085D2680D6081908`.
+  La carpeta portátil ocupa 183.111.398 bytes (93 archivos).
+
+Pendiente de la siguiente iteración:
+
+- [ ] Validar en vivo el marco del CHECK sin motor, la tarjeta de combustible
+      encendida y el fundido de 0,5 s al cambiar de camión.
+- [ ] Validar varios modelos en ATS y ETS2 reales, y el fallback con un modelo de
+      mod o sin imagen.
+
+### v2.7 — 31/10/2026
+
+Decimoctava iteración: corrección del comportamiento de los testigos sobre la
+v2.6. Capturas: `screenshots\fh6-v27-1920.png` y `screenshots\fh6-v27-1280.png`.
+
+- **CHECK normal:** `DrawFh6IndicatorRow` solo dibuja la celda del check engine
+  con `ignitionOn`. Con el motor apagado desaparece junto al resto de la tira;
+  encendido y sin avería usa icono y texto en blanco con borde tenue; cuando el
+  juego marca avería (`EngineDmg >= 5`) recupera el amarillo y el brillo.
+- **Crucero siempre visible:** `DrawFh6CruiseChip` se dibuja siempre. Inactivo
+  usa relleno blanco al 4,5 %, borde al 22 %, icono y texto atenuados y
+  `-- km/h`; activo recupera el relleno verde al 10 %, el borde al 42 % y la
+  velocidad fijada. El indicador que debía quedar visible era este, no el CHECK.
+- **Sin cambios:** la tarjeta de combustible sigue encendida sin motor, el
+  fundido de 0,5 s al cambiar de camión se mantiene y el catálogo de 45 imágenes
+  y la telemetría pasiva no se tocaron.
+- **Validación:** harness aislado sobre la DLL compilada. El CHECK no se dibuja
+  sin motor, aparece en blanco con motor y sin avería y en amarillo con
+  `EngineDmg = 18`. El crucero inactivo muestra `-- km/h` en gris y el activo
+  `75 km/h` en verde. El fundido conserva las diferencias 0,000 / 30,864 /
+  19,517 / 0,000. Demo final a 1920×1080 y 1280×720.
+- **App final:** `dist\ATS-Telemetry-Windows\ATSTelemetry.exe`, 178.721.534
+  bytes, SHA-256
+  `6AB88739EF3144C9D483C904FD617AFD5D1F52F969F7CFE79D2A5A4D715E07EF`.
+- **Paquete portable:** `dist\ATS-Telemetry-Windows.zip`, 93 entradas,
+  75.179.454 bytes, SHA-256
+  `87E7BC9B05E0AF0056F72CCD083F0598A1CFC4DEEF02E3223D8896044AED74E6`.
+  La carpeta portátil ocupa 183.111.611 bytes (93 archivos).
+
+Pendiente de la siguiente iteración:
+
+- [ ] Validar en vivo el CHECK oculto sin motor, blanco con motor y amarillo con
+      avería, y el chip de crucero inactivo/activo.
+- [ ] Validar la tarjeta de combustible encendida y el fundido de 0,5 s al
+      cambiar de camión.
+- [ ] Validar varios modelos en ATS y ETS2 reales, y el fallback con un modelo de
+      mod o sin imagen.
+
 ## Archivos
 
 ```text
@@ -706,9 +920,10 @@ src/DashboardRenderer.cs   Dibujo del panel (único archivo a modificar)
 src/TelemetryReader.cs     Datos y snapshot de demo (no tocar salvo necesidad)
 src/BankBalanceReader.cs   Nombre y logo del perfil, saldo y conductores
 Assets/CompanyLogos/       PNG reales logo_0..logo_7 (base.scs)
+Assets/TruckImages/        45 JPG oficiales por modelo + README.txt
 README-FH6.md              Este documento
 README.md                  Documento general del proyecto
-GUIA-INTERFAZ.md           Guía de coordenadas y métodos (sincronizada con v2.3)
+GUIA-INTERFAZ.md           Guía de coordenadas y métodos (sincronizada con v2.7)
 ```
 
 Respaldo del renderizador anterior:
@@ -734,6 +949,10 @@ No se usa una copia temporal aparte: lo que se prueba es lo que se entrega en
 
 ## Próximos pasos
 
-1. Validar con telemetría real de ATS/ETS2.
-2. Mantener `GUIA-INTERFAZ.md` y `HISTORIAL.md` sincronizados con cada iteración.
-3. Mantener actualizado `dist\ATS-Telemetry-Windows.zip` cuando se publique.
+1. Validar con telemetría real de ATS/ETS2 varios modelos y el fallback.
+2. Validar el CHECK oculto sin motor, blanco con motor y amarillo con avería; el
+   chip de crucero inactivo/activo, la tarjeta de combustible encendida y el
+   fundido de 0,5 s al cambiar de camión.
+3. Mantener `GUIA-INTERFAZ.md` y `HISTORIAL.md` sincronizados con cada iteración.
+4. Mantener actualizado `dist\ATS-Telemetry-Windows.zip` cuando se publique.
+5. Valorar imágenes por configuración de pintura en una versión futura.

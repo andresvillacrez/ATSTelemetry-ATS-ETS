@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "Lu4F7LtMQhc=",
+  "dgSpecHash": "Vm4KPC1uNag=",
   "success": true,
   "projectFilePath": "E:\\Proyectos de software\\APP Telemetria\\Windows Native Final\\src\\ATSTelemetry.Windows.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.32\\microsoft.net.illink.tasks.8.0.32.nupkg.sha512",
+    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.33\\microsoft.net.illink.tasks.8.0.33.nupkg.sha512",
     "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.netcore.platforms\\3.1.9\\microsoft.netcore.platforms.3.1.9.nupkg.sha512",
     "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.win32.systemevents\\4.7.0\\microsoft.win32.systemevents.4.7.0.nupkg.sha512",
     "C:\\Users\\hs-se\\.nuget\\packages\\opentk\\3.1.0\\opentk.3.1.0.nupkg.sha512",
@@ -15,9 +15,9 @@
     "C:\\Users\\hs-se\\.nuget\\packages\\skiasharp.views.desktop.common\\2.88.9\\skiasharp.views.desktop.common.2.88.9.nupkg.sha512",
     "C:\\Users\\hs-se\\.nuget\\packages\\skiasharp.views.windowsforms\\2.88.9\\skiasharp.views.windowsforms.2.88.9.nupkg.sha512",
     "C:\\Users\\hs-se\\.nuget\\packages\\system.drawing.common\\4.7.3\\system.drawing.common.4.7.3.nupkg.sha512",
-    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.32\\microsoft.netcore.app.runtime.win-x64.8.0.32.nupkg.sha512",
-    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.32\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.32.nupkg.sha512",
-    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.32\\microsoft.aspnetcore.app.runtime.win-x64.8.0.32.nupkg.sha512"
+    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.33\\microsoft.netcore.app.runtime.win-x64.8.0.33.nupkg.sha512",
+    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.33\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.33.nupkg.sha512",
+    "C:\\Users\\hs-se\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.33\\microsoft.aspnetcore.app.runtime.win-x64.8.0.33.nupkg.sha512"
   ],
   "logs": [
     {

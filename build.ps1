@@ -211,7 +211,31 @@ juego activo. El logo es el que elegiste en el perfil (por ejemplo, logo_4).
 El dinero total es el saldo real de la cuenta bancaria. Los datos se
 actualizan al autoguardar o al hacer un guardado rapido.
 
-El panel de combustible lleva el titulo COMBUSTIBLE.
+El panel de combustible lleva el titulo COMBUSTIBLE. La tarjeta sigue
+encendida cuando el motor esta apagado: mantiene nivel, galones, autonomia y
+barra mientras haya telemetria del juego.
+
+
+IMAGEN DEL CAMION
+-----------------
+
+El panel de danos muestra la imagen del camion actual: una captura de
+concesionario en ATS o un render oficial en ETS2. Assets\TruckImages
+incluye una imagen por cada modelo oficial: 19 de ATS y 26 de ETS2
+(45 en total). Se eligen por modelo (por ejemplo kenworth_w900.jpg) y
+no cambian con la pintura ni la configuracion.
+
+Las imagenes son JPG de 1200 x 600. Se muestran centradas, con margen
+y esquinas redondeadas. Al cambiar de camion, la imagen nueva se funde
+con la anterior en 0,5 segundos. Si el modelo no tiene imagen, el panel muestra
+un aviso discreto y el resto de la telemetria sigue funcionando. Sin
+senal no se dibuja nada. Los mods no estan incluidos.
+
+El testigo CHECK de la fila superior solo aparece con el motor encendido.
+Sin averia se muestra en blanco, como el resto de testigos, y se ilumina
+cuando el juego marca el check engine. El chip de crucero, en cambio, queda
+siempre visible: en gris con "-- km/h" cuando esta inactivo y en verde con la
+velocidad fijada cuando el crucero esta conectado.
 
 
 CONTENIDO DE LA CARPETA
@@ -226,6 +250,7 @@ CONTENIDO DE LA CARPETA
   Assets\Indicators                 Testigos e iconos del panel
   Assets\BrandLogos                 Logotipos de marca de los camiones
   Assets\CompanyLogos               Logos reales del perfil del juego
+  Assets\TruckImages                45 imagenes de camiones (JPG)
   Assets\Plugins\scs-telemetry.dll  Plugin de telemetria SCS
   LEEME.txt                         Este archivo
 
