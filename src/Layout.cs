@@ -7,7 +7,8 @@ public enum LayoutMode
     Auto,
     Full,
     Compact,
-    Minimal
+    Minimal,
+    Portrait
 }
 
 /// <summary>
@@ -41,14 +42,20 @@ internal sealed class DashboardLayout
     public bool ShowDetailRows { get; init; }
     public bool ShowBottomCards { get; init; }
 
-    public static LayoutMode ForSize(int width, int height)
+    public static LayoutMode ForSize(int width, int height, float uiScale = 1f)
     {
-        if (width >= 1700 && height >= 950)
+        // A mayor escala de UI, el espacio efectivo es menor: se reorganiza
+        // el layout para evitar solapamientos y desbordes de texto.
+        var scale = uiScale <= 0 ? 1f : uiScale;
+        var effectiveWidth = (int)(width / scale);
+        var effectiveHeight = (int)(height / scale);
+
+        if (effectiveWidth >= 1700 && effectiveHeight >= 950)
         {
             return LayoutMode.Full;
         }
 
-        if (width >= 1152 && height >= 648)
+        if (effectiveWidth >= 1152 && effectiveHeight >= 648)
         {
             return LayoutMode.Compact;
         }
@@ -60,6 +67,7 @@ internal sealed class DashboardLayout
     {
         LayoutMode.Compact => Compact(),
         LayoutMode.Minimal => Minimal(),
+        LayoutMode.Portrait => Portrait(),
         _ => Full()
     };
 
@@ -182,5 +190,39 @@ internal sealed class DashboardLayout
         ShowVerticalGauges = false,
         ShowDetailRows = false,
         ShowBottomCards = false
+    };
+
+    /// <summary>
+    /// Layout para pantallas verticales (1080 x 1920). Los paneles se
+    /// reorganizan en dos columnas superiores y una fila inferior; el cluster
+    /// queda centrado en la parte superior-media.
+    /// </summary>
+    private static DashboardLayout Portrait() => new()
+    {
+        Mode = LayoutMode.Portrait,
+        CanvasWidth = 1080f,
+        CanvasHeight = 1920f,
+        Header = new RectangleF(0f, 0f, 1080f, 80f),
+        Indicators = new RectangleF(0f, 92f, 1080f, 52f),
+        // Velocimetro + indicadores de temperatura/presion (centrados) entre
+        // los testigos superiores y los paneles de combustible/avisos/clima
+        ClusterCenter = new PointF(540f, 520f),
+        ClusterRadius = 280f,
+        Water = new RectangleF(40f, 300f, 80f, 380f),
+        Air = new RectangleF(960f, 300f, 80f, 380f),
+        // Fila de combustible / avisos / clima
+        Fuel = new RectangleF(40f, 820f, 320f, 130f),
+        Notices = new RectangleF(380f, 820f, 360f, 130f),
+        Weather = new RectangleF(760f, 820f, 280f, 130f),
+        // Paneles laterales (empresa, carga, danos, gps) debajo, con altura suficiente
+        Finance = new RectangleF(40f, 970f, 480f, 380f),
+        Damage = new RectangleF(560f, 970f, 480f, 380f),
+        Cargo = new RectangleF(40f, 1370f, 480f, 424f),
+        Gps = new RectangleF(560f, 1370f, 480f, 424f),
+        Trip = RectangleF.Empty,
+        Footer = new RectangleF(0f, 1872f, 1080f, 48f),
+        ShowVerticalGauges = true,
+        ShowDetailRows = true,
+        ShowBottomCards = true
     };
 }

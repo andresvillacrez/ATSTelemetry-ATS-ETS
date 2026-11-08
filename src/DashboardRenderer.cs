@@ -48,6 +48,11 @@ public sealed partial class DashboardRenderer
     private Image? _truckImagePrevious;
     private DateTime _truckImageFadeStartedUtc = DateTime.MinValue;
 
+    private string? _cargoImageKey;
+    private Image? _cargoImageCurrent;
+    private Image? _cargoImagePrevious;
+    private DateTime _cargoImageFadeStartedUtc = DateTime.MinValue;
+
     // Avisos del juego en el panel central: 2,5 s visibles y 0,5 s de fundido.
     private const double MessageHoldSeconds = 2.5;
     private const double MessageFadeSeconds = 0.5;
@@ -100,6 +105,8 @@ public sealed partial class DashboardRenderer
     private readonly TelemetryReader _reader;
     private readonly Dictionary<string, Image?> _icons = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Font> _fonts = new(StringComparer.OrdinalIgnoreCase);
+
+
     private DateTime? _lastSyncUtc;
     private DateTime _lastFrameUtc = DateTime.UtcNow;
     private readonly Dictionary<string, AnimatedValue> _smoothTargets = new(StringComparer.Ordinal);
@@ -179,15 +186,22 @@ public sealed partial class DashboardRenderer
         int width, int height,
         out float scale, out float offsetX, out float offsetY)
     {
-        var mode = LayoutMode == LayoutMode.Auto
-            ? DashboardLayout.ForSize(width, height)
-            : LayoutMode;
         var aspect = width / (float)height;
-        var layout = mode == LayoutMode.Full && (aspect > 1.85f || aspect < 1.72f)
-            ? DashboardLayout.CreateFull(
-                aspect > 1.85f ? 1080f * aspect : 1920f,
-                aspect > 1.85f ? 1080f : 1920f / aspect)
-            : DashboardLayout.Create(mode);
+        var portrait = aspect < 1f;
+        // En orientación vertical siempre se usa el layout Portrait, aunque el
+        // usuario haya fijado otro modo, para evitar reescalados incorrectos.
+        var mode = portrait
+            ? LayoutMode.Portrait
+            : (LayoutMode == LayoutMode.Auto
+                ? DashboardLayout.ForSize(width, height, Theme.UiScale)
+                : LayoutMode);
+        var layout = mode == LayoutMode.Portrait
+            ? DashboardLayout.Create(LayoutMode.Portrait)
+            : (mode == LayoutMode.Full && (aspect > 1.85f || aspect < 1.72f)
+                ? DashboardLayout.CreateFull(
+                    aspect > 1.85f ? 1080f * aspect : 1920f,
+                    aspect > 1.85f ? 1080f : 1920f / aspect)
+                : DashboardLayout.Create(mode));
 
         scale = Math.Min(width / layout.CanvasWidth, height / layout.CanvasHeight);
         offsetX = (width - layout.CanvasWidth * scale) / 2f;
@@ -207,7 +221,13 @@ public sealed partial class DashboardRenderer
         }
 
         var layout = ResolveLayout(width, height, out var scale, out var offsetX, out var offsetY);
-        if (layout.Mode != LayoutMode.Full || scale <= 0)
+        if (scale <= 0)
+        {
+            return DashboardAction.None;
+        }
+
+        // Los botones de cabecera (Ajustes/Créditos) solo existen en Full y Portrait.
+        if (layout.Mode != LayoutMode.Full && layout.Mode != LayoutMode.Portrait)
         {
             return DashboardAction.None;
         }
@@ -312,7 +332,7 @@ public sealed partial class DashboardRenderer
         var text = $"FPS {fps:0}  ·  FRAME {_drawMs:0.0} ms  ·  GC {gcMb:0.0} MB";
         const float width = 360f;
         var x = layout.CanvasWidth / 2f - width / 2f;
-        var y = layout.CanvasHeight - 136f;
+        var y = layout.Footer.Y - 30f;
 
         DrawSquircle(g, new RectangleF(x, y, width, 22f), 8f,
             Color.FromArgb(150, 8, 10, 12), Theme.Stroke, 1f);
@@ -966,11 +986,7 @@ public sealed partial class DashboardRenderer
         var fraction = AnimatedFraction(SmoothTarget("speed", targetFraction), ignitionElapsed);
         var displayedSpeedKmh = fraction * maxSpeed;
 
-        using (var halo = new SolidBrush(Color.FromArgb(8, 64, 209, 255)))
-        {
-            g.FillEllipse(halo, cx - radius - 64f, cy - radius - 64f,
-                (radius + 64f) * 2f, (radius + 64f) * 2f);
-        }
+        // Halo eliminado: no combinaba con el tacometro en el layout vertical.
 
         using (var track = new Pen(Ink(16), 8f)
                {
@@ -1046,13 +1062,13 @@ public sealed partial class DashboardRenderer
         DrawText(g, SpeedUnit, Rounded(15f, FontStyle.Bold), Theme.TextTertiary,
             new RectangleF(cx - 80f, cy + 20f, 160f, 22f), Center);
 
-        DrawFh6CruiseChip(g, cx, cy - 238f, cruiseSetKmh);
+        DrawFh6CruiseChip(g, cx, cy - (radius - 64f), cruiseSetKmh);
 
         if (ignitionOn)
         {
-            DrawFh6WarningLamp(g, new RectangleF(cx - 97.5f, cy - 230f, 32f, 32f),
+            DrawFh6WarningLamp(g, new RectangleF(cx - (radius * 0.32f + 16f), cy - (radius - 72f), 32f, 32f),
                 batteryWarning || bulbCheck, WarningLampKind.Battery);
-            DrawFh6WarningLamp(g, new RectangleF(cx + 65.5f, cy - 230f, 32f, 32f),
+            DrawFh6WarningLamp(g, new RectangleF(cx + (radius * 0.22f), cy - (radius - 72f), 32f, 32f),
                 oilWarning || bulbCheck, WarningLampKind.Oil);
         }
 
@@ -1378,8 +1394,8 @@ public sealed partial class DashboardRenderer
     {
         DrawGlassPanel(g, x, y, width, height, Theme.RadiusPanel);
 
-        var contentX = x + 24f;
-        var contentW = width - 48f;
+        var contentW = (width - 48f) * 0.90f;
+        var contentX = x + (width - contentW) / 2f;
 
         // El logotipo real del perfil del juego va a la derecha, con el mismo
         // margen interior que el resto del panel. El nombre conserva la
@@ -1391,7 +1407,7 @@ public sealed partial class DashboardRenderer
             ? contentW
             : contentW - companyLogoSize - companyLogoGap;
 
-        DrawSectionHeader(g, contentX, y + 29f, contentW, "EMPRESA", Theme.TextSecondary);
+        DrawSectionHeader(g, contentX, y + 29f, contentW, Localization.L("COMPANY"), Theme.TextSecondary);
 
         var company = string.IsNullOrWhiteSpace(snap.CompanyName) ? "SIN EMPRESA" : snap.CompanyName;
         DrawFitted(g, company, "Bahnschrift", 24f, FontStyle.Bold,
@@ -1412,6 +1428,17 @@ public sealed partial class DashboardRenderer
         var margin = income is { } incomeValue && incomeValue > 0 && net is { } netValue
             ? Math.Clamp((double)netValue / incomeValue, 0, 1)
             : (double?)null;
+
+        // Tinte sutil segun la ganancia neta (verde si positiva, rojo si negativa).
+        {
+            var tintColor = net is { } netVal && netVal >= 0 ? Green : Red;
+            var alpha = net == null ? 10 : 18;
+            using (var brush = new SolidBrush(Color.FromArgb(alpha, tintColor.R, tintColor.G, tintColor.B)))
+            using (var path = RoundedPath(new RectangleF(x, y, width, height), Theme.RadiusPanel))
+            {
+                g.FillPath(brush, path);
+            }
+        }
 
         if (ShowDetails)
         {
@@ -1444,19 +1471,19 @@ public sealed partial class DashboardRenderer
         {
             // Tres datos primarios: trabajo, ganancia y saldo. El resto vive en
             // el detalle (ShowDetails) para no competir con el cluster.
-            DrawFh6LedgerRow(g, contentX, y + 126f, contentW, "TRABAJO ACTUAL", Money(income), Green, 26f);
-            DrawFh6LedgerRow(g, contentX, y + 190f, contentW, "GANANCIA NETA", Money(net), Cyan, 26f);
+            DrawFh6LedgerRow(g, contentX, y + 118f, contentW, "TRABAJO ACTUAL", Money(income), Green, 28f);
+            DrawFh6LedgerRow(g, contentX, y + 178f, contentW, "GANANCIA NETA", Money(net), Cyan, 28f);
 
-            DrawHairline(g, contentX, y + 246f, contentX + contentW, 16);
+            DrawHairline(g, contentX, y + 238f, contentX + contentW, 14);
             DrawTracked(g, "SALDO DEL BANCO", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                contentX, y + 266f, 1.2f);
-            DrawFitted(g, Money(snap.BankBalance), "Bahnschrift", 36f, FontStyle.Bold, Cyan,
-                new RectangleF(contentX, y + 276f, contentW, 48f), Right, 22f);
+                contentX, y + 256f, 1.2f);
+            DrawFitted(g, Money(snap.BankBalance), "Bahnschrift", 38f, FontStyle.Bold, Cyan,
+                new RectangleF(contentX, y + 266f, contentW, 52f), Right, 22f);
 
-            DrawMetricRow(g, contentX, y + 342f, contentW, "MARGEN",
+            DrawMetricRow(g, contentX, y + 332f, contentW, "MARGEN",
                 margin == null ? "--" : $"{Math.Round(margin.Value * 100).ToString("0", Es)}%",
                 margin == null ? Theme.TextDisabled : Cyan);
-            DrawProgressBar(g, contentX, y + 358f, contentW, 6f, margin ?? 0, Cyan);
+            DrawProgressBar(g, contentX, y + 348f, contentW, 6f, margin ?? 0, Cyan);
         }
     }
 
@@ -1485,8 +1512,8 @@ public sealed partial class DashboardRenderer
     {
         DrawGlassPanel(g, x, y, width, height, Theme.RadiusPanel);
 
-        var contentX = x + 24f;
-        var contentW = width - 48f;
+        var contentW = (width - 48f) * 0.90f;
+        var contentX = x + (width - contentW) / 2f;
         var loaded = snap.Active && snap.CargoLoaded;
         var cargoName = loaded && !string.IsNullOrWhiteSpace(snap.CargoName) ? snap.CargoName : null;
         var cargoId = loaded && !string.IsNullOrWhiteSpace(snap.CargoId) ? snap.CargoId : null;
@@ -1497,7 +1524,7 @@ public sealed partial class DashboardRenderer
 
         DrawBoxIcon(g, contentX, y + 18f, 22f, accent);
         var cargoStatus = !snap.Active ? "SIN DATOS" : loaded ? "CARGADA" : "VACÍA";
-        DrawSectionHeader(g, contentX + 32f, y + 29f, contentW - 32f, "CARGA", accent,
+        DrawSectionHeader(g, contentX + 32f, y + 29f, contentW - 32f, Localization.L("CARGO"), accent,
             true, cargoStatus);
 
         DrawFitted(g, cargoName ?? "SIN CARGA", "Bahnschrift", 27f, FontStyle.Bold, Theme.TextPrimary,
@@ -1510,87 +1537,86 @@ public sealed partial class DashboardRenderer
                 new RectangleF(contentX, y + 86f, contentW, 18f), Left, TypeScale.Caption);
         }
 
-        DrawTracked(g, "PESO", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-            contentX, y + 126f, 1.2f);
-        var massText = mass == null ? "-- kg" : $"{Math.Round(mass.Value).ToString("N0", Es)} kg";
-        DrawFitted(g, massText, "Bahnschrift", 29f, FontStyle.Bold, Theme.TextPrimary,
-            new RectangleF(contentX, y + 134f, contentW - 70f, 38f), Left, 16f);
-        if (mass != null)
-        {
-            DrawText(g, $"{(mass.Value / 1000).ToString("N1", Es)} t",
-                Mono(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                new RectangleF(x + width - 94f, y + 150f, 70f, 18f), Right);
-        }
-
-        DrawTracked(g, "INTEGRIDAD", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-            contentX, y + 190f, 1.2f);
-        DrawText(g, damage == null ? "--" : $"{Math.Round(100 - damage.Value).ToString("0", Es)}%",
-            Mono(15f, FontStyle.Bold), damageColor,
-            new RectangleF(x + width - 124f, y + 184f, 100f, 22f), Right);
-        DrawProgressBar(g, contentX, y + 214f, contentW, 7f,
-            damage == null ? 0 : Math.Clamp(1 - damage.Value / 100, 0, 1), damageColor);
-
-        DrawHairline(g, contentX, y + 242f, contentX + contentW, 16);
+        DrawHairline(g, contentX, y + 108f, contentX + contentW, 16);
 
         if (ShowDetails)
         {
             DrawTracked(g, "TRABAJO", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                contentX, y + 260f, 1.2f);
+                contentX, y + 120f, 1.2f);
             DrawText(g, snap.SpecialJob ? "ESPECIAL" : "ESTÁNDAR", Rounded(TypeScale.Body, FontStyle.Bold),
                 snap.SpecialJob ? WithAlpha(Yellow, 0.88f) : Theme.TextSecondary,
-                new RectangleF(contentX, y + 272f, 160f, 20f), Left);
+                new RectangleF(contentX, y + 132f, 160f, 20f), Left);
 
             DrawTracked(g, "REMOLQUE", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                x + width - 174f, y + 260f, 1.2f);
+                x + width - 174f, y + 120f, 1.2f);
             DrawText(g, loaded ? "EN REMOLQUE" : "SIN REMOLQUE", Rounded(TypeScale.Body, FontStyle.Bold),
                 Theme.TextSecondary,
-                new RectangleF(x + width - 184f, y + 272f, 160f, 20f), Right);
+                new RectangleF(x + width - 184f, y + 132f, 160f, 20f), Right);
 
-            DrawTracked(g, "RUTA", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                contentX, y + 314f, 1.2f);
-            var fullRoute = snap.Active && snap.OnJob && !string.IsNullOrWhiteSpace(snap.CitySrc)
-                            && !string.IsNullOrWhiteSpace(snap.CityDst)
-                ? $"{snap.CitySrc}  →  {snap.CityDst}"
-                : "--";
-            DrawFitted(g, fullRoute, "Segoe UI", 14f, FontStyle.Regular, Theme.TextSecondary,
-                new RectangleF(contentX, y + 328f, contentW, 22f), Left, TypeScale.Caption);
+            // Imagen de la carga: 80 % del espacio libre, centrada.
+            var topEnd = y + 160f;
+            var bottomStart = y + height - 112f;
+            var freeHeight = bottomStart - topEnd;
+            var imageSize = freeHeight * 0.80f;
+            var imageY = topEnd + (freeHeight - imageSize) / 2f;
+            DrawFh6CargoImage(g, snap,
+                new RectangleF(contentX, imageY, contentW, imageSize));
 
-            var plannedKm = snap.Active && snap.OnJob && snap.Planned is { } plannedValue && plannedValue > 0
-                ? (double?)plannedValue
-                : null;
-            var eta = snap.Active && snap.OnJob ? FormatEta(snap.RouteT) : null;
+            // PESO encima de la barra de integridad (al final).
+            DrawTracked(g, "PESO", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
+                contentX, y + height - 96f, 1.2f);
+            var massText = mass == null ? "-- kg" : $"{Math.Round(mass.Value).ToString("N0", Es)} kg";
+            DrawFitted(g, massText, "Bahnschrift", 22f, FontStyle.Bold, Theme.TextPrimary,
+                new RectangleF(contentX, y + height - 80f, contentW - 70f, 28f), Left, 14f);
+            if (mass != null)
+            {
+                DrawText(g, $"{(mass.Value / 1000).ToString("N1", Es)} t",
+                    Mono(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
+                    new RectangleF(x + width - 94f, y + height - 72f, 70f, 16f), Right);
+            }
 
-            DrawHairline(g, contentX, y + 356f, contentX + contentW, 12);
-            DrawTracked(g, "DISTANCIA", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                contentX, y + 368f, 1.2f);
-            DrawText(g, plannedKm == null ? "--" : $"{plannedKm.Value.ToString("N0", Es)} km",
-                Rounded(14f, FontStyle.Bold), Theme.TextSecondary,
-                new RectangleF(contentX, y + 380f, 160f, 20f), Left);
-
-            DrawTracked(g, "ENTREGA", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                x + width - 174f, y + 368f, 1.2f);
-            DrawText(g, eta ?? "--", Rounded(14f, FontStyle.Bold), Theme.TextSecondary,
-                new RectangleF(x + width - 184f, y + 380f, 160f, 20f), Right);
+            // Barra de integridad al final del panel.
+            DrawTracked(g, "INTEGRIDAD", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
+                contentX, y + height - 44f, 1.2f);
+            DrawText(g, damage == null ? "--" : $"{Math.Round(100 - damage.Value).ToString("0", Es)}%",
+                Mono(13f, FontStyle.Bold), damageColor,
+                new RectangleF(x + width - 124f, y + height - 50f, 100f, 18f), Right);
+            DrawProgressBar(g, contentX, y + height - 26f, contentW, 6f,
+                damage == null ? 0 : Math.Clamp(1 - damage.Value / 100, 0, 1), damageColor);
         }
         else
         {
-            DrawTracked(g, "RUTA", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                contentX, y + 260f, 1.2f);
-            var route = snap.Active && snap.OnJob && !string.IsNullOrWhiteSpace(snap.CitySrc)
-                        && !string.IsNullOrWhiteSpace(snap.CityDst)
-                ? $"{snap.CitySrc}  →  {snap.CityDst}"
-                : "--";
-            DrawFitted(g, route, "Segoe UI", 14f, FontStyle.Regular, Theme.TextSecondary,
-                new RectangleF(contentX, y + 274f, contentW, 22f), Left, TypeScale.Caption);
+            var topEnd = y + 120f;
+            var bottomStart = y + height - 110f;
+            var freeHeight = bottomStart - topEnd;
+            var imageSize = freeHeight * 0.80f;
+            var imageY = topEnd + (freeHeight - imageSize) / 2f;
+            DrawFh6CargoImage(g, snap,
+                new RectangleF(contentX, imageY, contentW, imageSize));
 
-            DrawTracked(g, "ENTREGA", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
-                contentX, y + 314f, 1.2f);
-            var eta = snap.Active && snap.OnJob ? FormatEta(snap.RouteT) : null;
-            DrawText(g, eta ?? "--", Rounded(TypeScale.Body, FontStyle.Bold), Theme.TextSecondary,
-                new RectangleF(contentX, y + 328f, contentW, 22f), Left);
+            // PESO encima de la barra de integridad (al final).
+            DrawTracked(g, "PESO", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
+                contentX, y + height - 96f, 1.2f);
+            var massText = mass == null ? "-- kg" : $"{Math.Round(mass.Value).ToString("N0", Es)} kg";
+            DrawFitted(g, massText, "Bahnschrift", 22f, FontStyle.Bold, Theme.TextPrimary,
+                new RectangleF(contentX, y + height - 80f, contentW - 70f, 28f), Left, 14f);
+            if (mass != null)
+            {
+                DrawText(g, $"{(mass.Value / 1000).ToString("N1", Es)} t",
+                    Mono(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
+                    new RectangleF(x + width - 94f, y + height - 72f, 70f, 16f), Right);
+            }
+
+            // Barra de integridad al final del panel.
+            DrawTracked(g, "INTEGRIDAD", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
+                contentX, y + height - 44f, 1.2f);
+            DrawText(g, damage == null ? "--" : $"{Math.Round(100 - damage.Value).ToString("0", Es)}%",
+                Mono(13f, FontStyle.Bold), damageColor,
+                new RectangleF(x + width - 124f, y + height - 50f, 100f, 18f), Right);
+            DrawProgressBar(g, contentX, y + height - 26f, contentW, 6f,
+                damage == null ? 0 : Math.Clamp(1 - damage.Value / 100, 0, 1), damageColor);
         }
     }
-
     private static void DrawFh6CompanyLogo(Graphics g, Image image, RectangleF rect)
     {
         // El PNG ya contiene el logotipo tal como lo dibuja el juego. Se centra
@@ -1650,17 +1676,21 @@ public sealed partial class DashboardRenderer
 
         DrawTintedIcon(g, "advisor-diagnostics",
             new RectangleF(x + 24f, y + 18f, 22f, 22f), headerColor, 1f);
-        DrawSectionHeader(g, x + 56f, y + 29f, width - 80f, "DAÑOS", headerColor,
+        DrawSectionHeader(g, x + 56f, y + 29f, width - 80f, Localization.L("DAMAGE"), headerColor,
             true, status);
 
-        DrawDamageRow(g, x + 24f, y + 64f, width - 48f, "CAMIÓN", truck);
-        DrawDamageRow(g, x + 24f, y + 110f, width - 48f, "TRÁILER", trailer);
-        DrawDamageRow(g, x + 24f, y + 156f, width - 48f, "CARGA", cargo);
+        // Contenido reducido un 15 % lateralmente y centrado, sin alterar el panel.
+        var contentWidth = (width - 48f) * 0.90f;
+        var contentX = x + (width - contentWidth) / 2f;
+        DrawDamageRow(g, contentX, y + 58f, contentWidth, "CAMIÓN", truck);
+        DrawDamageRow(g, contentX, y + 90f, contentWidth, "TRÁILER", trailer);
+        DrawDamageRow(g, contentX, y + 122f, contentWidth, "CARGA", cargo);
 
-        // La imagen ocupa la mitad inferior libre del panel. Se centra dentro
-        // del área y conserva un margen interior en los cuatro lados.
+        // La imagen ocupa el resto del panel. Se centra dentro del área y
+        // conserva un margen interior en los cuatro lados. No se modifica la
+        // lógica de carga/fundido de la imagen.
         DrawFh6TruckImage(g, snap,
-            new RectangleF(x + 24f, y + 190f, width - 48f, height - 202f));
+            new RectangleF(x + 24f, y + 146f, width - 48f, height - 158f));
     }
 
     private void DrawFh6TruckImage(Graphics g, Snap snap, RectangleF area)
@@ -1675,7 +1705,7 @@ public sealed partial class DashboardRenderer
         if (image == null)
         {
             ResetTruckImageFade();
-            DrawText(g, "IMAGEN DEL MODELO NO DISPONIBLE", Mono(TypeScale.Caption, FontStyle.Bold),
+            DrawText(g, Localization.L("NO_IMAGE").ToUpperInvariant(), Mono(TypeScale.Caption, FontStyle.Bold),
                 Theme.TextDisabled, area, TextFormat.Center);
             return;
         }
@@ -1782,6 +1812,104 @@ public sealed partial class DashboardRenderer
         _truckImagePrevious = null;
     }
 
+    private void ResetCargoImageFade()
+    {
+        _cargoImageKey = null;
+        _cargoImageCurrent = null;
+        _cargoImagePrevious = null;
+    }
+
+    private void DrawFh6CargoImage(Graphics g, Snap snap, RectangleF area)
+    {
+        if (!snap.Active || !snap.CargoLoaded)
+        {
+            ResetCargoImageFade();
+            DrawText(g, "SIN IMAGEN DE CARGA", Mono(TypeScale.Caption, FontStyle.Bold),
+                Theme.TextDisabled, area, TextFormat.Center);
+            return;
+        }
+
+        var image = CargoImage(snap, out var key);
+        if (image == null)
+        {
+            ResetCargoImageFade();
+            DrawText(g, "SIN IMAGEN DE CARGA", Mono(TypeScale.Caption, FontStyle.Bold),
+                Theme.TextDisabled, area, TextFormat.Center);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if (!string.Equals(key, _cargoImageKey, StringComparison.OrdinalIgnoreCase))
+        {
+            _cargoImagePrevious = _cargoImageCurrent;
+            _cargoImageCurrent = image;
+            _cargoImageKey = key;
+            _cargoImageFadeStartedUtc = now;
+        }
+
+        const float inset = 8f;
+        var availableWidth = Math.Max(1f, area.Width - inset * 2f);
+        var availableHeight = Math.Max(1f, area.Height - inset * 2f);
+        var scale = Math.Min(availableWidth / image.Width, availableHeight / image.Height);
+        var width = image.Width * scale;
+        var height = image.Height * scale;
+        var target = new RectangleF(
+            area.X + (area.Width - width) / 2f,
+            area.Y + (area.Height - height) / 2f,
+            width,
+            height);
+
+        var fade = _cargoImagePrevious == null
+            ? 1f
+            : (float)SmoothStep(
+                (now - _cargoImageFadeStartedUtc).TotalSeconds / TruckImageFadeSeconds);
+
+        using (var clip = RoundedPath(target, 8f))
+        {
+            var state = g.Save();
+            g.SetClip(clip);
+
+            if (_cargoImagePrevious is { } previous && fade < 1f)
+            {
+                DrawTruckImageAlpha(g, previous, target, 1f - fade);
+            }
+
+            DrawTruckImageAlpha(g, image, target, fade);
+
+            var shadeHeight = target.Height * 0.42f;
+            using (var shade = new LinearGradientBrush(
+                       new RectangleF(target.X, target.Bottom - shadeHeight,
+                           target.Width, shadeHeight),
+                       WithAlpha(Color.Black, 0f),
+                       WithAlpha(Color.Black, 0.78f),
+                       LinearGradientMode.Vertical))
+            {
+                g.FillRectangle(shade, target.X, target.Bottom - shadeHeight,
+                    target.Width, shadeHeight);
+            }
+
+            g.Restore(state);
+        }
+
+        if (fade >= 1f)
+        {
+            _cargoImagePrevious = null;
+        }
+
+        var label = snap.CargoName ?? "CARGA";
+        DrawFitted(g, label, "Bahnschrift", TypeScale.Label, FontStyle.Bold,
+            Color.FromArgb(255, 232, 238, 245),
+            new RectangleF(target.X + 10f, target.Bottom - 26f,
+                target.Width - 20f, 18f),
+            Left, TypeScale.Caption);
+
+        using (var border = new Pen(Ink(30), 1f))
+        using (var path = RoundedPath(target, 8f))
+        {
+            g.DrawPath(border, path);
+        }
+    }
+
     private void DrawFh6GpsPanel(
         Graphics g,
         Snap snap,
@@ -1806,14 +1934,26 @@ public sealed partial class DashboardRenderer
 
         DrawGlassPanel(g, x, y, width, height, Theme.RadiusPanel);
 
+        // Tinte sutil segun el estado de la ruta.
+        if (active)
+        {
+            var tintColor = snap.OnJob ? Green : Cyan;
+            using (var brush = new SolidBrush(Color.FromArgb(14, tintColor.R, tintColor.G, tintColor.B)))
+            using (var path = RoundedPath(new RectangleF(x, y, width, height), Theme.RadiusPanel))
+            {
+                g.FillPath(brush, path);
+            }
+        }
+
         DrawLocationIcon(g, x + 24f, y + 18f, 22f, accent);
         var gpsStatus = !active ? "SIN DATOS" : snap.OnJob ? "EN RUTA" : "SIN RUTA";
         var gpsStatusColor = !active ? Theme.TextDisabled
             : snap.OnJob ? WithAlpha(Green, 0.82f)
             : Theme.TextDisabled;
-        DrawSectionHeader(g, x + 56f, y + 29f, width - 80f, "GPS", gpsStatusColor,
+        DrawSectionHeader(g, x + 56f, y + 29f, width - 80f, Localization.L("GPS"), gpsStatusColor,
             true, gpsStatus);
 
+        var speedKmh = active && snap.Speed is { } speed ? speed * 3.6 : 0;
         var limitKmh = active && snap.Limit is { } limit && limit > 0.5f
             ? limit * 3.6
             : (double?)null;
@@ -1838,8 +1978,8 @@ public sealed partial class DashboardRenderer
 
         DrawTracked(g, "DESTINO", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
             centerX, y + 111f, 1.2f, Center);
-        DrawFitted(g, destination, "Bahnschrift", 17f, FontStyle.Bold, Theme.TextPrimary,
-            new RectangleF(columnX, y + 118f, columnWidth, 22f), Center, TypeScale.Caption);
+        DrawFitted(g, destination, "Bahnschrift", 20f, FontStyle.Bold, Theme.TextPrimary,
+            new RectangleF(columnX, y + 116f, columnWidth, 26f), Center, TypeScale.Caption);
 
         if (ShowDetails)
         {
@@ -1900,7 +2040,7 @@ public sealed partial class DashboardRenderer
                     : "--",
                 Mono(TypeScale.Caption, FontStyle.Bold), Theme.TextSecondary,
                 new RectangleF(x + width - 170f, y + 297f, 150f, 18f), Right);
-            DrawProgressBar(g, x + 20f, y + 320f, width - 40f, 6f, progress, accent);
+            DrawProgressBar(g, x + 20f, y + 320f, width - 40f, 8f, progress, accent);
 
             DrawHairline(g, x + 20f, y + 338f, x + width - 20f, 14);
             DrawTracked(g, "POSICIÓN", Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextTertiary,
@@ -1937,7 +2077,7 @@ public sealed partial class DashboardRenderer
                     : "--",
                 Mono(TypeScale.Caption, FontStyle.Bold), Theme.TextSecondary,
                 new RectangleF(x + width - 170f, y + 291f, 150f, 18f), Right);
-            DrawProgressBar(g, x + 20f, y + 316f, width - 40f, 6f, progress, accent);
+            DrawProgressBar(g, x + 20f, y + 316f, width - 40f, 8f, progress, accent);
 
             DrawHairline(g, x + 20f, y + 336f, x + width - 20f, 12);
             var route = active && snap.OnJob && !string.IsNullOrWhiteSpace(snap.CitySrc)
@@ -1982,12 +2122,22 @@ public sealed partial class DashboardRenderer
             : targetFraction < 0.30 ? Orange
             : Green;
 
+        // Tinte sutil segun el nivel de combustible.
+        if (snap.Active)
+        {
+            using (var brush = new SolidBrush(Color.FromArgb(20, color.R, color.G, color.B)))
+            using (var path = RoundedPath(new RectangleF(x, y, width, height), Theme.RadiusCard))
+            {
+                g.FillPath(brush, path);
+            }
+        }
+
         DrawFuelIcon(g, x + 18f, y + 10f, 22f, color);
         var fuelStatus = !snap.Active ? "SIN DATOS" : lowFuel ? "RESERVA" : "NIVEL";
         var fuelStatusColor = !snap.Active ? Theme.TextDisabled
             : lowFuel ? Red
             : Theme.TextTertiary;
-        DrawSectionHeader(g, x + 48f, y + 21f, width - 64f, "COMBUSTIBLE", fuelStatusColor,
+        DrawSectionHeader(g, x + 48f, y + 21f, width - 64f, Localization.L("FUEL"), fuelStatusColor,
             true, fuelStatus);
 
         DrawFuelIcon(g, x + 20f, y + 48f, 32f, color);
@@ -2020,15 +2170,27 @@ public sealed partial class DashboardRenderer
                 : $"AUT. -- {(Imperial ? "MI" : "KM")}",
             "Consolas", TypeScale.Caption, FontStyle.Bold, Theme.TextTertiary,
             new RectangleF(detailX, y + 66f, detailWidth, 18f), Left, 10f);
+        var consText = "--";
+        if (snap.Active && snap.Cons is { } consValue && consValue > 0)
+        {
+            var l100 = consValue * 100.0;
+            consText = Imperial
+                ? $"{(235.215 / l100).ToString("0.0", Es)} MPG"
+                : $"{l100.ToString("0.0", Es)} L/100";
+        }
+        DrawFitted(g, $"CONS. {consText}",
+            "Consolas", TypeScale.Caption, FontStyle.Bold, Theme.TextTertiary,
+            new RectangleF(detailX, y + 84f, detailWidth, 18f), Left, 8f);
 
-        DrawProgressBar(g, x + 20f, y + 112f, width - 40f, 6f, fraction, color);
+        var barY = y + height - 26f;
+        DrawProgressBar(g, x + 20f, barY, width - 40f, 6f, fraction, color);
 
         // Marcador de reserva al 12 %: referencia visual fija, independiente del
         // color de la barra.
         var reserveX = x + 20f + (width - 40f) * 0.12f;
         using (var reserve = new Pen(WithAlpha(Red, 0.75f), 2f))
         {
-            g.DrawLine(reserve, reserveX, y + 108f, reserveX, y + 122f);
+            g.DrawLine(reserve, reserveX, barY - 4f, reserveX, barY + 10f);
         }
     }
 
@@ -2089,6 +2251,16 @@ public sealed partial class DashboardRenderer
     {
         DrawGlassPanel(g, x, y, width, height, 22f);
 
+        // Tinte sutil segun el color del indicador (temperatura/presion).
+        if (powered)
+        {
+            using (var brush = new SolidBrush(Color.FromArgb(16, accent.R, accent.G, accent.B)))
+            using (var path = RoundedPath(new RectangleF(x, y, width, height), 22f))
+            {
+                g.FillPath(brush, path);
+            }
+        }
+
         // Con el motor apagado solo queda el marco; no se dibujan escala ni lectura.
         if (!powered)
         {
@@ -2098,7 +2270,7 @@ public sealed partial class DashboardRenderer
         var barWidth = 10f;
         var barX = x + width / 2f - barWidth / 2f;
         var trackTop = y + 22f;
-        var trackBottom = y + 338f;
+        var trackBottom = y + height - 108f;
         var trackHeight = trackBottom - trackTop;
 
         DrawText(g, maxText, Mono(10f, FontStyle.Bold), Theme.TextTertiary,
@@ -2130,15 +2302,15 @@ public sealed partial class DashboardRenderer
 
         DrawText(g, minText, Mono(10f, FontStyle.Bold), Theme.TextTertiary,
             new RectangleF(x, trackBottom + 4f, width, 13f), Center);
-        DrawHairline(g, x + 20f, y + 362f, x + width - 20f, 10);
+        DrawHairline(g, x + 20f, y + height - 78f, x + width - 20f, 10);
 
         // Lectura al pie de la barra: número, unidad y subtítulo centrados.
         DrawFitted(g, valueText, "Bahnschrift", 28f, FontStyle.Bold, accent,
-            new RectangleF(x + 4f, y + 368f, width - 8f, 34f), Center, 18f);
+            new RectangleF(x + 4f, y + height - 72f, width - 8f, 34f), Center, 18f);
         DrawText(g, unit, Rounded(TypeScale.Caption, FontStyle.Bold), Theme.TextSecondary,
-            new RectangleF(x, y + 404f, width, 14f), Center);
+            new RectangleF(x, y + height - 36f, width, 14f), Center);
         DrawFitted(g, caption, "Bahnschrift", TypeScale.Caption, FontStyle.Bold, Theme.TextTertiary,
-            new RectangleF(x + 2f, y + 420f, width - 4f, 16f), Center, 9f);
+            new RectangleF(x + 2f, y + height - 20f, width - 4f, 16f), Center, 9f);
     }
 
     private void DrawFh6ReservedPanel(
@@ -2151,10 +2323,21 @@ public sealed partial class DashboardRenderer
     {
         DrawGlassPanel(g, x, y, width, height, Theme.RadiusCard);
 
+        // Tinte naranja tenue cuando hay un aviso activo; se desvanece con el aviso.
+        if (_currentMessage is { } && _messageOpacity > 0.01f)
+        {
+            var alpha = (int)Math.Clamp(_messageOpacity * 40f, 0f, 40f);
+            using (var brush = new SolidBrush(Color.FromArgb(alpha, 255, 133, 26)))
+            using (var path = RoundedPath(new RectangleF(x, y, width, height), Theme.RadiusCard))
+            {
+                g.FillPath(brush, path);
+            }
+        }
+
         DrawTintedIcon(g, "advisor-diagnostics",
             new RectangleF(x + 18f, y + 10f, 22f, 22f), Orange, 0.92f);
         var status = snap.Demo ? "DEMO" : snap.Active ? "EN VIVO" : "SIN DATOS";
-        DrawSectionHeader(g, x + 48f, y + 21f, width - 64f, "AVISOS",
+        DrawSectionHeader(g, x + 48f, y + 21f, width - 64f, Localization.L("NOTICES"),
             snap.Active ? Theme.TextTertiary : Theme.TextDisabled, true, status);
 
         if (_currentMessage is { } message && _messageOpacity > 0.01f)
@@ -2203,8 +2386,21 @@ public sealed partial class DashboardRenderer
                 _ => Yellow
             };
 
+        // Tinte sutil segun la hora del dia.
+        if (snap.Active)
+        {
+            var tint = isDay
+                ? Color.FromArgb(16, 255, 214, 56)   // dia: ambar suave
+                : Color.FromArgb(20, 64, 107, 255);  // noche: azul
+            using (var brush = new SolidBrush(tint))
+            using (var path = RoundedPath(new RectangleF(x, y, width, height), Theme.RadiusCard))
+            {
+                g.FillPath(brush, path);
+            }
+        }
+
         DrawCompactWeatherIcon(g, condition, isDay, x + 18f, y + 10f, 22f, accent, snap.Active);
-        DrawSectionHeader(g, x + 48f, y + 21f, width - 64f, "CLIMA",
+        DrawSectionHeader(g, x + 48f, y + 21f, width - 64f, Localization.L("WEATHER"),
             snap.Active ? Theme.TextTertiary : Theme.TextDisabled, true,
             !snap.Active ? "SIN DATOS" : isDay ? "DÍA" : "NOCHE");
 
@@ -3703,7 +3899,7 @@ public sealed partial class DashboardRenderer
         var contentX = x + width * 0.075f;
 
         DrawFuelIcon(g, contentX, y + height * 0.055f, width * 0.09f, color);
-        DrawTracked(g, "COMBUSTIBLE", Rounded(16f, FontStyle.Bold), White(0.52f),
+        DrawTracked(g, Localization.L("FUEL"), Rounded(16f, FontStyle.Bold), White(0.52f),
             contentX + width * 0.12f, y + height * 0.105f, 1f);
 
         // Conjunto barra + datos centrado en el panel.
@@ -4103,7 +4299,7 @@ public sealed partial class DashboardRenderer
         DrawPanelFrame(g, x, y, width, height, 28f);
 
         DrawTintedIcon(g, "advisor-diagnostics", new RectangleF(x + 22f, y + 22f, 20f, 20f), headerColor, 1f);
-        DrawTracked(g, "DAÑOS", Rounded(17f, FontStyle.Bold), White(0.62f), x + 54f, y + 34f, 3f);
+        DrawTracked(g, Localization.L("DAMAGE"), Rounded(17f, FontStyle.Bold), White(0.62f), x + 54f, y + 34f, 3f);
         DrawText(g, status, Mono(12f, FontStyle.Bold), WithAlpha(headerColor, 0.85f),
             new RectangleF(x + width - 130f, y + 24f, 106f, 20f), Right);
 
@@ -4119,13 +4315,13 @@ public sealed partial class DashboardRenderer
 
     private void DrawDamageRow(Graphics g, float x, float y, float width, string label, double? value)
     {
-        const float labelWidth = 88f;
-        const float percentWidth = 54f;
-        const float gap = 10f;
+        const float labelWidth = 64f;
+        const float percentWidth = 44f;
+        const float gap = 8f;
 
         var fraction = value == null ? 0 : Math.Clamp(value.Value / 100, 0, 1);
         var color = DamageColor(value);
-        var text = value == null ? "--" : $"{Math.Round(value.Value).ToString("0", Es)}%  {DamageLabel(value)}";
+        var text = value == null ? "--" : $"{Math.Round(value.Value).ToString("0", Es)}%";
         var centerY = y + 12f;
 
         DrawTracked(g, label, Rounded(11f, FontStyle.Bold), Theme.TextSecondary,
@@ -4133,7 +4329,7 @@ public sealed partial class DashboardRenderer
         DrawProgressBar(g, x + labelWidth + gap, y + 9f,
             width - labelWidth - percentWidth - gap * 2f, 6f, fraction, color);
         DrawText(g, text, Mono(14f, FontStyle.Bold), color,
-            new RectangleF(x + width - percentWidth - 80f, y - 2f, percentWidth + 80f, 26f), Right);
+            new RectangleF(x + width - percentWidth - 40f, y - 2f, percentWidth + 40f, 26f), Right);
     }
 
     private void DrawCargoPanel(Graphics g, Snap snap, float x, float y, float width, float height)
@@ -4149,7 +4345,7 @@ public sealed partial class DashboardRenderer
         DrawPanelFrame(g, x, y, width, height, 28f);
 
         DrawBoxIcon(g, x + 22f, y + 22f, 20f, accent);
-        DrawTracked(g, "CARGA", Rounded(17f, FontStyle.Bold), White(0.62f), x + 54f, y + 34f, 3f);
+        DrawTracked(g, Localization.L("CARGO"), Rounded(17f, FontStyle.Bold), White(0.62f), x + 54f, y + 34f, 3f);
         DrawText(g, !snap.Active ? "SIN SEÑAL" : loaded ? "CARGADA" : "VACÍA",
             Mono(12f, FontStyle.Bold), WithAlpha(accent, 0.85f),
             new RectangleF(x + width - 130f, y + 24f, 106f, 20f), Right);
@@ -4203,7 +4399,7 @@ public sealed partial class DashboardRenderer
         DrawPanelFrame(g, x, y, width, height, 28f);
 
         DrawLocationIcon(g, x + 22f, y + 22f, 20f, accent);
-        DrawTracked(g, "GPS", Rounded(17f, FontStyle.Bold), White(0.62f), x + 54f, y + 34f, 3f);
+        DrawTracked(g, Localization.L("GPS"), Rounded(17f, FontStyle.Bold), White(0.62f), x + 54f, y + 34f, 3f);
         DrawText(g, !snap.Active ? "SIN SEÑAL" : snap.OnJob ? "EN RUTA" : "SIN RUTA",
             Mono(12f, FontStyle.Bold),
             !snap.Active ? White(0.25f) : snap.OnJob ? WithAlpha(Green, 0.80f) : White(0.25f),
@@ -4366,12 +4562,12 @@ public sealed partial class DashboardRenderer
 
     private Font Rounded(float size, FontStyle style = FontStyle.Regular)
     {
-        return GetFont("Bahnschrift", size, style);
+        return GetFont("Inter", size, style);
     }
 
     private Font Ui(float size, FontStyle style = FontStyle.Regular)
     {
-        return GetFont("Segoe UI", size, style);
+        return GetFont("Inter", size, style);
     }
 
     private Font Mono(float size, FontStyle style = FontStyle.Regular)
@@ -4385,7 +4581,14 @@ public sealed partial class DashboardRenderer
         var key = $"{family}|{scaledSize:0.0}|{(int)style}";
         if (!_fonts.TryGetValue(key, out var font))
         {
-            font = new Font(family, scaledSize, style, GraphicsUnit.Pixel);
+            try
+            {
+                font = new ATSTelemetry.SkiaCompat.SkiaFont(family, scaledSize, style, GraphicsUnit.Pixel);
+            }
+            catch
+            {
+                font = new Font("Segoe UI", scaledSize, style, GraphicsUnit.Pixel);
+            }
             _fonts[key] = font;
         }
         return font;
@@ -4944,6 +5147,76 @@ public sealed partial class DashboardRenderer
         {
             _icons[key] = null;
             return null;
+        }
+    }
+
+    private Image? CargoImage(Snap snap, out string key)
+    {
+        key = string.Empty;
+        if (!snap.Active || !snap.CargoLoaded)
+        {
+            return null;
+        }
+
+        foreach (var candidate in CargoImageCandidates(snap))
+        {
+            var image = LoadCargoImage(candidate);
+            if (image != null)
+            {
+                key = candidate;
+                return image;
+            }
+        }
+
+        return null;
+    }
+
+    private Image? LoadCargoImage(string name)
+    {
+        var key = "cargo:" + name;
+        if (_icons.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            var dir = Path.Combine(AppContext.BaseDirectory, "Assets", "CargoImages");
+            string? path = null;
+            foreach (var ext in new[] { ".png", ".jpg", ".jpeg" })
+            {
+                var candidate = Path.Combine(dir, name + ext);
+                if (File.Exists(candidate))
+                {
+                    path = candidate;
+                    break;
+                }
+            }
+            var image = path == null ? null : Image.FromFile(path);
+            _icons[key] = image;
+            return image;
+        }
+        catch
+        {
+            _icons[key] = null;
+            return null;
+        }
+    }
+
+    private static IEnumerable<string> CargoImageCandidates(Snap snap)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(snap.CargoId))
+        {
+            var id = snap.CargoId!.Trim().ToLowerInvariant()
+                .Replace("cargo.", "").Replace(" ", "_").Replace("-", "_");
+            if (seen.Add(id)) yield return id;
+        }
+        if (!string.IsNullOrWhiteSpace(snap.CargoName))
+        {
+            var name = snap.CargoName!.Trim().ToLowerInvariant()
+                .Replace(" ", "_").Replace("-", "_");
+            if (seen.Add(name)) yield return name;
         }
     }
 

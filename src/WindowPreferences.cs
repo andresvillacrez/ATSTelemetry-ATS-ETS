@@ -37,6 +37,9 @@ internal sealed class WindowPreferences
     /// <summary>Sistema de unidades: métrico o imperial.</summary>
     public UnitSystem Units { get; set; } = UnitSystem.Metric;
 
+    /// <summary>Idioma de la interfaz.</summary>
+    public AppLanguage Language { get; set; } = AppLanguage.Es;
+
     /// <summary>
     /// Última posición y tamaño en modo ventana. Se guardan solo cuando la
     /// ventana está normal (ni maximizada ni en overlay).
@@ -119,6 +122,11 @@ internal sealed class WindowPreferences
                 {
                     preferences.Units = units;
                 }
+                else if (key.Equals("language", StringComparison.OrdinalIgnoreCase)
+                         && Enum.TryParse<AppLanguage>(value, true, out var language))
+                {
+                    preferences.Language = language;
+                }
                 else if (key.Equals("windowX", StringComparison.OrdinalIgnoreCase)
                          && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var windowX))
                 {
@@ -196,6 +204,7 @@ internal sealed class WindowPreferences
                 "theme=" + Theme,
                 "uiScale=" + UiScale.ToString("0.00", CultureInfo.InvariantCulture),
                 "units=" + Units,
+                "language=" + Language,
                 "windowX=" + (WindowX?.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
                 "windowY=" + (WindowY?.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
                 "windowWidth=" + (WindowWidth?.ToString(CultureInfo.InvariantCulture) ?? string.Empty),

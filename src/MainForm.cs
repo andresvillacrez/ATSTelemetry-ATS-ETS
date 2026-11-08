@@ -52,6 +52,7 @@ public sealed class MainForm : Form
 
         _preferences = WindowPreferences.Load();
         Theme.Apply(_preferences.Theme, _preferences.UiScale);
+        Localization.Language = _preferences.Language;
 
         var hasExplicitScreen = !string.IsNullOrWhiteSpace(_screenTarget);
         var forcedWindowed = args.Any(arg =>
@@ -664,6 +665,7 @@ public sealed class MainForm : Form
             }
 
             form.ApplyTo(_preferences);
+            Localization.Language = _preferences.Language;
             Theme.Apply(_preferences.Theme, _preferences.UiScale);
             WindowChrome.ApplyTitleBar(Handle, !Theme.IsLight);
             BackColor = Theme.BackgroundTop;
@@ -885,11 +887,11 @@ public sealed class MainForm : Form
         var menu = new ContextMenuStrip();
         WindowChrome.ApplyDarkMenu(menu);
 
-        _screenMenu = new ToolStripMenuItem("Pantalla");
+        _screenMenu = new ToolStripMenuItem(Localization.L("SCREEN"));
         _screenMenu.DropDownOpening += (_, _) => RebuildScreenMenu();
         menu.Items.Add(_screenMenu);
 
-        _windowedItem = new ToolStripMenuItem("Modo ventana")
+        _windowedItem = new ToolStripMenuItem(Localization.L("WINDOWED"))
         {
             ShortcutKeyDisplayString = "F11",
             CheckOnClick = false,
@@ -898,7 +900,7 @@ public sealed class MainForm : Form
         _windowedItem.Click += (_, _) => ToggleWindowed();
         menu.Items.Add(_windowedItem);
 
-        _layoutMenu = new ToolStripMenuItem("Diseño")
+        _layoutMenu = new ToolStripMenuItem(Localization.L("LAYOUT"))
         {
             ShortcutKeyDisplayString = "Ctrl+Shift+L"
         };
@@ -906,11 +908,12 @@ public sealed class MainForm : Form
         AddLayoutItem(_layoutMenu, "Completo · 1920 × 1080", LayoutMode.Full);
         AddLayoutItem(_layoutMenu, "Compacto · 1280 × 720", LayoutMode.Compact);
         AddLayoutItem(_layoutMenu, "Mínimo · 960 × 540", LayoutMode.Minimal);
+        AddLayoutItem(_layoutMenu, "Vertical · 1080 × 1920", LayoutMode.Portrait);
         menu.Items.Add(_layoutMenu);
 
         menu.Items.Add(new ToolStripSeparator());
 
-        _overlayItem = new ToolStripMenuItem("Superposición")
+        _overlayItem = new ToolStripMenuItem(Localization.L("OVERLAY"))
         {
             ShortcutKeyDisplayString = "Ctrl+Shift+F",
             CheckOnClick = false,
@@ -919,7 +922,7 @@ public sealed class MainForm : Form
         _overlayItem.Click += (_, _) => ToggleOverlay();
         menu.Items.Add(_overlayItem);
 
-        _clickThroughItem = new ToolStripMenuItem("Clic a través")
+        _clickThroughItem = new ToolStripMenuItem(Localization.L("CLICK_THROUGH"))
         {
             ShortcutKeyDisplayString = "Ctrl+Shift+O",
             CheckOnClick = false,
@@ -929,7 +932,7 @@ public sealed class MainForm : Form
         _clickThroughItem.Click += (_, _) => ApplyClickThrough(!_clickThrough);
         menu.Items.Add(_clickThroughItem);
 
-        _alwaysOnTopItem = new ToolStripMenuItem("Siempre visible")
+        _alwaysOnTopItem = new ToolStripMenuItem(Localization.L("ALWAYS_ON_TOP"))
         {
             CheckOnClick = false,
             Checked = _preferences.AlwaysOnTop
@@ -945,20 +948,20 @@ public sealed class MainForm : Form
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var settings = new ToolStripMenuItem("Ajustes…")
+        var settings = new ToolStripMenuItem(Localization.L("SETTINGS"))
         {
             ShortcutKeyDisplayString = "Ctrl+Shift+A"
         };
         settings.Click += (_, _) => ShowSettings();
         menu.Items.Add(settings);
 
-        var credits = new ToolStripMenuItem("Créditos");
+        var credits = new ToolStripMenuItem(Localization.L("CREDITS"));
         credits.Click += (_, _) => ShowCredits();
         menu.Items.Add(credits);
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var exit = new ToolStripMenuItem("Salir");
+        var exit = new ToolStripMenuItem(Localization.L("EXIT"));
         exit.Click += (_, _) => Close();
         menu.Items.Add(exit);
 

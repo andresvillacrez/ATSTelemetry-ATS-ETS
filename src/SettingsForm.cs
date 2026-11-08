@@ -13,6 +13,7 @@ internal sealed class SettingsForm : Form
     private readonly DarkSelect _theme;
     private readonly DarkSelect _uiScale;
     private readonly DarkSelect _units;
+    private readonly DarkSelect _language;
     private readonly DarkCheckBox _details;
     private readonly DarkCheckBox _reduceMotion;
     private readonly DarkCheckBox _diagnostics;
@@ -79,7 +80,8 @@ internal sealed class SettingsForm : Form
             "Automático según la ventana",
             "Completo · 1920 × 1080",
             "Compacto · 1280 × 720",
-            "Mínimo · 960 × 540");
+            "Mínimo · 960 × 540",
+            "Vertical · 1080 × 1920");
         _layout.SelectedIndex = (int)preferences.Layout;
         Controls.Add(_layout);
 
@@ -159,23 +161,24 @@ internal sealed class SettingsForm : Form
             : preferences.ScreenDevice!, 576);
         AddInfoRow("Preferencias", WindowPreferences.PreferencesPath, 598, small: true);
 
-        AddLabel("TEMA", 24, 620);
-        AddLabel("ESCALA", 176, 620);
-        AddLabel("UNIDADES", 316, 620);
+        AddLabel(Localization.L("THEME").ToUpperInvariant(), 24, 620);
+        AddLabel(Localization.L("SCALE"), 136, 620);
+        AddLabel(Localization.L("UNITS").ToUpperInvariant(), 248, 620);
+        AddLabel(Localization.L("LANGUAGE").ToUpperInvariant(), 360, 620);
 
         _theme = new DarkSelect
         {
             Location = new Point(24, 638),
-            Size = new Size(136, 28)
+            Size = new Size(104, 28)
         };
-        _theme.AddItems("Oscuro", "Claro", "Contraste");
+        _theme.AddItems(Localization.L("THEME_DARK"), Localization.L("THEME_LIGHT"), Localization.L("THEME_CONTRAST"));
         _theme.SelectedIndex = Math.Clamp((int)preferences.Theme, 0, 2);
         Controls.Add(_theme);
 
         _uiScale = new DarkSelect
         {
-            Location = new Point(176, 638),
-            Size = new Size(124, 28)
+            Location = new Point(136, 638),
+            Size = new Size(104, 28)
         };
         _uiScale.AddItems("100 %", "125 %", "150 %");
         _uiScale.SelectedIndex = preferences.UiScale >= 1.45f ? 2 : preferences.UiScale >= 1.20f ? 1 : 0;
@@ -183,12 +186,21 @@ internal sealed class SettingsForm : Form
 
         _units = new DarkSelect
         {
-            Location = new Point(316, 638),
-            Size = new Size(140, 28)
+            Location = new Point(248, 638),
+            Size = new Size(104, 28)
         };
-        _units.AddItems("Métrico", "Imperial");
+        _units.AddItems(Localization.L("METRIC"), Localization.L("IMPERIAL"));
         _units.SelectedIndex = preferences.Units == UnitSystem.Imperial ? 1 : 0;
         Controls.Add(_units);
+
+        _language = new DarkSelect
+        {
+            Location = new Point(360, 638),
+            Size = new Size(96, 28)
+        };
+        _language.AddItems("Español", "English");
+        _language.SelectedIndex = preferences.Language == AppLanguage.En ? 1 : 0;
+        Controls.Add(_language);
 
         _diagnostics = AddCheck("Mostrar overlay de diagnóstico (FPS y frame)", 24, 676,
             preferences.ShowDiagnostics);
@@ -250,7 +262,8 @@ internal sealed class SettingsForm : Form
             _ => 1.00f
         };
         preferences.Units = _units.SelectedIndex == 1 ? UnitSystem.Imperial : UnitSystem.Metric;
-        preferences.Layout = (LayoutMode)Math.Clamp(_layout.SelectedIndex, 0, 3);
+        preferences.Language = _language.SelectedIndex == 1 ? AppLanguage.En : AppLanguage.Es;
+        preferences.Layout = (LayoutMode)Math.Clamp(_layout.SelectedIndex, 0, 4);
         preferences.ShowDetails = _details.Checked;
         preferences.ReduceMotion = _reduceMotion.Checked;
         preferences.ShowDiagnostics = _diagnostics.Checked;

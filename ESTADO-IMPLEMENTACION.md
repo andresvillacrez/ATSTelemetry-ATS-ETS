@@ -46,10 +46,10 @@ Actualizado: 2026-11-04
 
 ## Pendiente
 
-- Reflow completo del layout para 150 % (hoy se escala la tipografía).
-- Idioma es/en y extracción de textos a recursos.
-- Consumo L/100 km o MPG (confirmar unidades de `Snap.Cons`).
-- Cambios panel por panel restantes de detalle fino (si se desea).
+- [x] Reflow del layout para 150 %: `DashboardLayout.ForSize` recibe `Theme.UiScale` y selecciona Compact/Minimal cuando el espacio efectivo es menor. (2026-11-07)
+- [x] Idioma es/en: infraestructura `Localization` + selector en Ajustes + preferencia persistida + textos clave migrados. (2026-11-07)
+- [x] Consumo L/100 km / MPG anadido al panel de combustible; demo corregido. (2026-11-07)
+- [x] Detalle fino: nombre del modelo sobre la imagen de danos; textos clave migrados. (2026-11-07)
 
 ## Comandos
 

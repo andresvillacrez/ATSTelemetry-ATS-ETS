@@ -391,7 +391,7 @@ public sealed class TelemetryReader : IDisposable
             Range = (float)Math.Max(120, 740 - t * 0.06),
             Speed = 22.2f,
             Gear = 10,
-            Cons = 0.00028f,
+            Cons = 0.28f,
             Cruise = 20.8f,
             Limit = 27.7f,
             CruiseOn = true,
