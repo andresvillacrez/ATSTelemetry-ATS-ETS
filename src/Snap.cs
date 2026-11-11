@@ -113,4 +113,6 @@ public sealed class Snap
     public long? DriverIncome { get; set; }
 
     public int? HiredDrivers { get; set; }
+    public int? Garages { get; set; }
+    public int? Trucks { get; set; }
 }

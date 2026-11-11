@@ -161,6 +161,8 @@ public sealed class TelemetryReader : IDisposable
                 snap.CompanyLogo = save.CompanyLogo;
                 snap.DriverIncome = save.DriverIncome;
                 snap.HiredDrivers = save.HiredDrivers;
+                snap.Garages = save.Garages;
+                snap.Trucks = save.Trucks;
             }
         }
 
@@ -434,6 +436,8 @@ public sealed class TelemetryReader : IDisposable
             CompanyLogo = "logo_4",
             DriverIncome = 4_384_955,
             HiredDrivers = 33,
+            Garages = 10,
+            Trucks = 49,
             Planned = 350,
             PosX = 1234.5 + t * 0.8,
             PosY = 0,
@@ -453,3 +457,4 @@ public sealed class TelemetryReader : IDisposable
         _bankReader.Dispose();
     }
 }
+

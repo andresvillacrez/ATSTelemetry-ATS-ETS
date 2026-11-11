@@ -1,4 +1,4 @@
-# ATS / ETS2 Native Telemetry App (v3.0)
+# ATS / ETS2 Native Telemetry App (v3.2.0)
 
 <p align="center">
   <img src="screenshots/fh6-v27-1920.png" alt="ATS / ETS2 Native Telemetry App Preview" width="100%">
@@ -6,7 +6,7 @@
 
 Aplicación de escritorio independiente para **Windows (x64)** que lee y muestra la telemetría en tiempo real de **American Truck Simulator (ATS)** y **Euro Truck Simulator 2 (ETS2)** con una interfaz gráfica avanzada a 60 FPS mediante **SkiaSharp**.
 
-Última actualización: **4 de noviembre de 2026**.
+Última actualización: **10 de noviembre de 2026**.
 
 ---
 
@@ -22,7 +22,25 @@ También puedes descargar el ZIP portátil desde `dist/ATS-Telemetry-Windows.zip
 
 ---
 
-## Novedades v3.0
+## Novedades v3.2.0
+
+### Versi�n v3.2.0 (2026-11-10)
+- Paneles de empresa, carga y ruta reorganizados; testigos inactivos al 20 %; mensajes con encabezado y valor; respaldo de logo/carga para ETS2; instalador release actualizado.
+
+### Actualizaciones recientes (2026-11-09)
+- Panel de empresa: SALDO DEL BANCO, iconos PNG (garage, camión, conductor, correo) de `Assets\Icons`, en blanco, centrados horizontalmente con texto y número debajo.
+- Testigos superiores ampliados a 40 px, centrados verticalmente.
+- Pulso sin ampliación (solo opacidad) en testigos con pulso.
+- Velocímetro ampliado a 180 km/h.
+- Testigo CHECK ENGINE con pulso al activarse.
+- Gauges de aire y temperatura modernizados (barra gruesa, sin indicador, 20 % más pequeños, teñido al tamaño del gauge).
+- Panel de combustible: icono y porcentaje centrados, autonomía restante debajo.
+- Panel de carga: imagen ampliada (88 % del espacio libre).
+- Panel GPS: brújula restaurada, destino entre brújula y límite, sin rumbo/odómetro/llegada/hora prevista.
+- Panel ESTADO DE CARGA: sin TIPO ni REMOLQUE ni línea divisoria; nombre de carga más cerca de TRABAJO e integridad en fila (texto, barra y porcentaje).
+- Eliminado el encuadre (borde) de paneles y gauges; se conserva el de los testigos.
+- Editor de layout con drag & drop (Ctrl+Shift+E), guardado en `layout.json`.
+
 
 - **Layouts responsive:** Full 1920×1080, Compact 1280×720 y Minimal 960×540, con canvas propio y soporte ultrawide/16:10.
 - **Temas:** oscuro, claro y alto contraste, con barra de título y menús adaptados.
@@ -30,6 +48,7 @@ También puedes descargar el ZIP portátil desde `dist/ATS-Telemetry-Windows.zip
 - **Componentes:** cabecera con estado útil, botones de Ajustes/Créditos, chips, estados vacíos y onboarding.
 - **Rendimiento:** suavizado de valores en vivo, fondo y marcos cacheados en `SKPicture`, overlay de diagnóstico opcional (< 16,6 ms/frame).
 - **Windows:** overlay clic a través, atajos globales, persistencia de ventana y guardia de seguridad de 30 minutos.
+- **Interfaz:** testigo CHECK ENGINE con pulso al activarse; velocímetro ampliado a 180 km/h.
 - **Instalador:** instalación por usuario, plugin de telemetría, accesos directos y desinstalador.
 
 > Las secciones de la v2.7 que aparecen a continuación se conservan como historial técnico.
@@ -242,7 +261,15 @@ Las capturas de pantalla guardadas en el repositorio documentan la evolución vi
 
 ---
 
+## Backup del EXE funcional
+
+Último EXE funcional guardado en `backups\exe-20261109-205157\` (SHA-256: `CD03CF46D65D953E3BC42ED244A15FC340A1C12183A7AD75AEF8AE99F14C9ECC`).
+Ver `BACKUP.md` para instrucciones de restauración.
+
 ## Licencia y Créditos
 - Desarrollado por **HS-Gaming**.
 - Telemetría basada en `scs-telemetry.dll` de RenCloud.
 - Interfaz gráfica inspirada en el estándar FH6.
+
+
+

@@ -751,8 +751,15 @@ public sealed partial class DashboardRenderer
 
         if (_currentMessage is { } message && _messageOpacity > 0.01f)
         {
-            DrawFitted(g, message, "Bahnschrift", 19f, FontStyle.Bold,
-                WithAlpha(Orange, 0.96f * _messageOpacity),
+            var color = message.Kind switch
+            {
+                DashboardRenderer.NoticeKind.Income => Green,
+                DashboardRenderer.NoticeKind.Expense => Red,
+                DashboardRenderer.NoticeKind.Route => Cyan,
+                _ => Orange
+            };
+            DrawFitted(g, message.Text, "Bahnschrift", 19f, FontStyle.Bold,
+                WithAlpha(color, 0.96f * _messageOpacity),
                 new RectangleF(area.X + 16f, area.Y + 38f, area.Width - 32f, 34f), Center, 12f);
         }
         else
@@ -838,8 +845,15 @@ public sealed partial class DashboardRenderer
     {
         if (_currentMessage is { } message && _messageOpacity > 0.01f)
         {
-            DrawText(g, message, Rounded(TypeScale.Caption, FontStyle.Bold),
-                WithAlpha(Orange, 0.92f * _messageOpacity),
+            var color = message.Kind switch
+            {
+                DashboardRenderer.NoticeKind.Income => Green,
+                DashboardRenderer.NoticeKind.Expense => Red,
+                DashboardRenderer.NoticeKind.Route => Cyan,
+                _ => Orange
+            };
+            DrawText(g, message.Text, Rounded(TypeScale.Caption, FontStyle.Bold),
+                WithAlpha(color, 0.92f * _messageOpacity),
                 new RectangleF(area.X, area.Y, area.Width, area.Height), Center);
             return;
         }

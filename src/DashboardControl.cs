@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
@@ -105,3 +105,4 @@ public sealed class DashboardControl : SKGLControl
         base.Dispose(disposing);
     }
 }
+

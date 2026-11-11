@@ -15,7 +15,9 @@ public sealed record SaveGameData(
     string? CompanyName,
     string? CompanyLogo,
     long? DriverIncome,
-    int? HiredDrivers);
+    int? HiredDrivers,
+    int? Garages,
+    int? Trucks);
 
 /// <summary>
 /// Reads the player's bank balance, company name and hired-driver income from
@@ -350,7 +352,7 @@ internal static class SiiBankParser
                 return null;
             }
 
-            var (name, logo) = ProfileInfo(profilePath);
+            var (name, logo, _, _) = ProfileInfo(profilePath);
             return data with { CompanyName = name, CompanyLogo = logo };
         }
         catch
@@ -381,11 +383,11 @@ internal static class SiiBankParser
         return ProfileInfo(profilePath).Name;
     }
 
-    public static (string? Name, string? Logo) ProfileInfo(string? profilePath)
+    public static (string? Name, string? Logo, int? Garages, int? Trucks) ProfileInfo(string? profilePath)
     {
         if (string.IsNullOrWhiteSpace(profilePath))
         {
-            return (null, null);
+            return (null, null, null, null);
         }
 
         try
@@ -393,7 +395,7 @@ internal static class SiiBankParser
             var bytes = File.ReadAllBytes(profilePath);
             if (bytes.Length < 4)
             {
-                return (null, null);
+                return (null, null, null, null);
             }
 
             var signature = ReadUInt32(bytes, 0);
@@ -406,17 +408,19 @@ internal static class SiiBankParser
 
             if (decoded == null)
             {
-                return (null, null);
+                return (null, null, null, null);
             }
 
             var text = Encoding.UTF8.GetString(decoded);
             var name = MatchProfileValue(text, "company_name");
             var logo = MatchProfileValue(text, "logo");
-            return (name, logo);
+            var garages = MatchProfileCount(text, "garage");
+            var trucks = MatchProfileCount(text, "truck");
+            return (name, logo, garages, trucks);
         }
         catch
         {
-            return (null, null);
+            return (null, null, null, null);
         }
     }
 
@@ -433,6 +437,14 @@ internal static class SiiBankParser
         var value = (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Trim();
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
+
+    private static int? MatchProfileCount(string text, string key)
+    {
+        var matches = Regex.Matches(text, $@"\b{Regex.Escape(key)}\b", RegexOptions.IgnoreCase);
+        if (matches.Count == 0) return null;
+        return matches.Count;
+    }
+
 
     private static byte[]? DecryptScsC(byte[] encrypted)
     {
@@ -507,7 +519,7 @@ internal static class SiiBankParser
                 return null;
             }
 
-            return new SaveGameData(value, null, null, null, null);
+            return new SaveGameData(value, null, null, null, null, null, null);
         }
         catch
         {
@@ -529,6 +541,8 @@ internal static class SiiBankParser
         var templates = new Dictionary<uint, Template>();
         long? balance = null;
         List<string>? hiredDrivers = null;
+        List<string>? companyTrucks = null;
+        var garagesOwned = 0;
         var driverLogs = new Dictionary<string, string>(StringComparer.Ordinal);
         var logEntries = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var entryRevenues = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -609,6 +623,20 @@ internal static class SiiBankParser
                     {
                         hiredDrivers = reader.ReadIdentifiers();
                     }
+                    else if (template.Name == "player" && field.Name == "trucks"
+                             && field.Type is 58 or 60 or 62)
+                    {
+                        companyTrucks = reader.ReadIdentifiers();
+                    }
+                    else if (template.Name == "garage" && field.Name == "status"
+                             && field.Type is 39)
+                    {
+                        var garageStatus = reader.ReadUInt32();
+                        if (garageStatus != 0)
+                        {
+                            garagesOwned++;
+                        }
+                    }
                     else if (template.Name == "driver_ai" && field.Name == "profit_log"
                              && field.Type is 57 or 59 or 61)
                     {
@@ -664,7 +692,8 @@ internal static class SiiBankParser
             hiredCount = matchedDrivers;
         }
 
-        return new SaveGameData(balance, null, null, driverIncome, hiredCount);
+        int? trucksCount = companyTrucks == null ? null : companyTrucks.Distinct(StringComparer.Ordinal).Count();
+        return new SaveGameData(balance, null, null, driverIncome, hiredCount, garagesOwned, trucksCount);
     }
 
     private readonly record struct Field(string Name, uint Type);
@@ -902,3 +931,9 @@ internal static class SiiBankParser
         }
     }
 }
+
+
+
+
+
+

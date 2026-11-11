@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -1217,3 +1217,4 @@ public sealed class MainForm : Form
         public string DeviceKey;
     }
 }
+

@@ -47,8 +47,8 @@
   </Target>
 
   <ItemGroup>
-    <Content Include="..\Assets\Indicators\*.png"
-             Link="Assets\Indicators\%(Filename)%(Extension)"
+    <Content Include="..\Assets\Icons\*.png"
+             Link="Assets\Icons\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\Assets\BrandLogos\*.png"
@@ -63,8 +63,8 @@
              Link="Assets\TruckImages\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="..\Assets\TruckImages\*.txt"
-             Link="Assets\TruckImages\%(Filename)%(Extension)"
+    <Content Include="..\Assets\Maps\*.png"
+             Link="Assets\Maps\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\Assets\CargoImages\*.*"

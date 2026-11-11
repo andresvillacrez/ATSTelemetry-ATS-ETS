@@ -27,9 +27,9 @@ internal static class Localization
         ["NOTICES"] = ("AVISOS", "NOTICES"),
         ["WEATHER"] = ("CLIMA", "WEATHER"),
         ["COMPANY"] = ("EMPRESA", "COMPANY"),
-        ["CARGO"] = ("CARGA", "CARGO"),
-        ["DAMAGE"] = ("DAÑOS", "DAMAGE"),
-        ["GPS"] = ("GPS", "GPS"),
+        ["CARGO"] = ("ESTADO DE CARGA", "CARGO"),
+        ["DAMAGE"] = ("ESTADO DEL CAMIÓN", "DAMAGE"),
+        ["GPS"] = ("ESTADO DE RUTA", "GPS"),
         // Status
         ["NO_DATA"] = ("SIN DATOS", "NO DATA"),
         ["NO_SIGNAL"] = ("SIN SEÑAL", "NO SIGNAL"),
