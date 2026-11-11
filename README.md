@@ -20,11 +20,13 @@ El instalador crea la carpeta, copia la aplicación y los recursos, instala el p
 
 También puedes descargar el ZIP portátil desde `dist/ATS-Telemetry-Windows.zip`.
 
+> **Nota:** el instalador `ATS-Telemetry-Setup.exe` se publica como asset del Release **v3.2.0**. No se versiona dentro del repositorio porque supera el límite de tamaño de GitHub; descárgalo desde la sección Releases.
+
 ---
 
 ## Novedades v3.2.0
 
-### Versi�n v3.2.0 (2026-11-10)
+### Versi�n v3.2.0 (2026-11-10)
 - Paneles de empresa, carga y ruta reorganizados; testigos inactivos al 20 %; mensajes con encabezado y valor; respaldo de logo/carga para ETS2; instalador release actualizado.
 
 ### Actualizaciones recientes (2026-11-09)
